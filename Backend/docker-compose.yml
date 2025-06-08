@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/app/uploads   # <--- this maps your host uploads folder to container uploads folder
+
+
+
+# services:
+#   backend:
+#     build: .
+#     ports:
+#       - "5000:5000"
+#     env_file:
+#       - .env
+
+
+# version: '3.8'
+
+# services:
+#   # Your Node.js backend service
+#   backend:
+#     build: .
+#     container_name: climemora-backend
+#     restart: unless-stopped
+#     ports:
+#       - "5000:5000"
+#     environment:
+#       - NODE_ENV=production
+#       # Add your MongoDB Atlas connection string here
+#       - MONGODB_URI=mongodb+srv://bscs2112229:YxCum63DnBhtes4G@memora.7ohp8.mongodb.net/
