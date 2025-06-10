@@ -10,7 +10,7 @@ import FriendsScreen from './FriendsScreen';
 // import ProfileScreen from './ProfileScreen';
 import ProfileScreen from './ProfileScreen';
 import HomeCapsule from './HomeCapsule';
-// import capsuleCalendar from './CapsuleCalendarPage';
+import capsuleCalendar from './CapsuleCalendarPage';
 
 const Tab = createBottomTabNavigator();
 
@@ -33,7 +33,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* <Tab.Screen
+      <Tab.Screen
         name="Calendar"
         component={capsuleCalendar}
         options={{
@@ -47,7 +47,7 @@ export default function TabLayout() {
           ),
           headerShown: false,
         }}
-      /> */}
+      />
 
       <Tab.Screen
         name="CameraScreen"

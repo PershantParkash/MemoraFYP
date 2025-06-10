@@ -6,10 +6,13 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Image,
+  
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import useFriendService from '../../hooks/useFriendService'; // Adjust the path as needed
+import useFriendService from '../../hooks/useFriendService'; 
+import Config from 'react-native-config';
 
 const FriendsScreen = () => {
   const navigation = useNavigation();
@@ -26,14 +29,14 @@ const FriendsScreen = () => {
   const renderPendingRequestItem = (item) => (
     <View style={styles.requestItem} key={item._id}>
       <View style={styles.pendingItem}>
-        {/* <Image
+        <Image
           source={
             item?.profilePicture
-              ? { uri: `http://192.168.2.107:5000/uploads/${item.profilePicture}` }
+              ? { uri: `${Config.API_BASE_URL}/uploads/${item.profilePicture}` }
               : require('../../assets/images/avatar.png')
           }
           style={styles.profileImage}
-        /> */}
+        />
         <Text style={styles.profileName}>{item.username}</Text>
       </View>
       <View style={styles.actionButtons}>
@@ -64,10 +67,10 @@ const FriendsScreen = () => {
             pendingRequestsProfile.map(renderPendingRequestItem)
           ) : (
             <View style={styles.container2}>
-              {/* <Image
+              <Image
                 source={require('../../assets/images/png.jpg')}
                 style={styles.image}
-              /> */}
+              />
               <Text style={styles.noRequestsText}>
                 You have no pending friend requests right now.
               </Text>
@@ -79,14 +82,14 @@ const FriendsScreen = () => {
           {allProfiles.length > 0 ? (
             allProfiles.map((profile) => (
               <View style={styles.profileItem} key={profile._id}>
-                {/* <Image
+                <Image
                   source={
                     profile?.profilePicture
-                      ? { uri: `http://192.168.2.107:5000/uploads/${profile.profilePicture}` }
+                      ? { uri: `${Config.API_BASE_URL}/uploads/${profile.profilePicture}` }
                       : require('../../assets/images/avatar.png')
                   }
                   style={styles.profileImage}
-                /> */}
+                />
                 <Text style={styles.profileName}>{profile.username}</Text>
                 <TouchableOpacity
                   style={styles.sendRequestButton}
@@ -104,10 +107,10 @@ const FriendsScreen = () => {
             ))
           ) : (
             <View style={styles.container2}>
-              {/* <Image
+              <Image
                 source={require('../../assets/images/png2.jpg')}
                 style={styles.image}
-              /> */}
+              />
               <Text style={styles.noRequestsText}>
                 No users available to send a friend request.
               </Text>

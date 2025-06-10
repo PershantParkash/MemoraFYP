@@ -79,8 +79,8 @@ const RegistrationStep2 = () => {
       Alert.alert('Validation Error', 'Please enter your contact number.');
       return false;
     }
-    if (!/^\d{10,15}$/.test(contactNo)) {
-      Alert.alert('Validation Error', 'Contact number must be between 10-15 digits.');
+    if (!/^\d{10,12}$/.test(contactNo)) {
+      Alert.alert('Validation Error', 'Contact number must be between 10-11 digits.');
       return false;
     }
     if (!dob.trim()) {
@@ -105,7 +105,6 @@ const RegistrationStep2 = () => {
     try {
       const registerData = await registerUser(email, password);
       const { token } = registerData;
-
       await AsyncStorage.setItem('authToken', token);
 
       if (token) {

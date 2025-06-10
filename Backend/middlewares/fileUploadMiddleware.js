@@ -2,14 +2,14 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-// const uploadFolder = path.resolve('C:\\Users\\Pershant\\Desktop\\Memora\\backend', 'uploads');
+// const uploadFolder = path.resolve('C:\\Users\\Pershant\\Desktop\\Fyp\\Memora\\backend', 'uploads');
 
 
 // ES module-compatible way to get __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const uploadFolder = path.resolve(__dirname, 'uploads');
+const uploadFolder = path.resolve(__dirname, '../uploads');
 
 if (!fs.existsSync(uploadFolder)) {
     fs.mkdirSync(uploadFolder, { recursive: true });
