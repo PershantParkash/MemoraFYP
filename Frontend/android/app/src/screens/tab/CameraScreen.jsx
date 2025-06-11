@@ -9,14 +9,12 @@ import {
   ActivityIndicator,
   PermissionsAndroid,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { Camera, useCameraDevices, useCameraPermission, useMicrophonePermission } from 'react-native-vision-camera';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import { MyContext } from "../../context/MyContext";
 
 export default function CameraScreen() {
@@ -24,24 +22,18 @@ export default function CameraScreen() {
   const { capsuleInfo, setCapsuleInfo } = context;
   const navigation = useNavigation();
 
-  // Camera setup
   const devices = useCameraDevices();
   const [cameraPosition, setCameraPosition] = useState('back');
-  
-  // Get device with fallback
-  const device = devices.find(d => d.position === cameraPosition) || 
-                devices.find(d => d.position === 'back') || 
-                devices[0];
-  
-  // Permissions
+  const device = devices.find(d => d.position === cameraPosition) || devices[0];
+
   const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
   const { hasPermission: hasMicrophonePermission, requestPermission: requestMicrophonePermission } = useMicrophonePermission();
 
-  // State
   const [photo, setPhoto] = useState(null);
   const [videoUri, setVideoUri] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
 
   const cameraRef = useRef(null);
 
@@ -49,355 +41,184 @@ export default function CameraScreen() {
     requestPermissions();
   }, []);
 
-  // Debug camera devices
-  useEffect(() => {
-    console.log('Available camera devices:', devices);
-    console.log('Selected device:', device);
-  }, [devices, device]);
-
   const requestPermissions = async () => {
-    // Request camera permission
-    if (!hasCameraPermission) {
-      const cameraGranted = await requestCameraPermission();
-      if (!cameraGranted) {
-        Alert.alert('Camera Permission', 'Camera permission is required to use this feature');
-        return;
-      }
-    }
-
-    // Request microphone permission
-    if (!hasMicrophonePermission) {
-      const micGranted = await requestMicrophonePermission();
-      if (!micGranted) {
-        Alert.alert('Microphone Permission', 'Microphone permission is required for video recording');
-      }
-    }
-
-    // Request storage permission for Android
+    if (!hasCameraPermission) await requestCameraPermission();
+    if (!hasMicrophonePermission) await requestMicrophonePermission();
     if (Platform.OS === 'android') {
-      try {
-        await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-        ]);
-      } catch (err) {
-        console.warn(err);
-      }
+      await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+      ]);
     }
   };
 
-  // Show loading if permissions are not determined yet
-  if (hasCameraPermission === null || hasMicrophonePermission === null) {
+  if (hasCameraPermission == null || hasMicrophonePermission == null) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.message}>Requesting permissions...</Text>
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.text}>Requesting permissions...</Text>
       </View>
     );
   }
 
-  // Show permission request screen if permissions denied
-  if (hasCameraPermission === false) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Camera permission is required</Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestCameraPermission}>
-          <Text style={styles.permissionButtonText}>Grant Camera Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  // Show loading if device is not available
   if (!device) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.message}>Loading camera...</Text>
-        <Text style={styles.message}>
-          Devices found: {devices.length}
-        </Text>
-        {devices.length > 0 && (
-          <Text style={styles.message}>
-            Available: {devices.map(d => d.position).join(', ')}
-          </Text>
-        )}
+      <View style={styles.centered}>
+        <Text style={styles.text}>Loading camera...</Text>
       </View>
     );
   }
 
-  const toggleCameraFacing = () => {
-    const newPosition = cameraPosition === 'back' ? 'front' : 'back';
-    const newDevice = devices.find(d => d.position === newPosition);
-    if (newDevice) {
-      setCameraPosition(newPosition);
-    }
-  };
-
   const takePicture = async () => {
-    try {
-      if (cameraRef.current) {
+    if (cameraRef.current && device) {
+      try {
         setIsLoading(true);
-        const photo = await cameraRef.current.takePhoto({
-          qualityPrioritization: 'speed',
-          flash: 'off',
-        });
-        
-        const photoUri = `file://${photo.path}`;
-        setCapsuleInfo(prevState => ({ ...prevState, fileUri: photoUri }));
+        const photo = await cameraRef.current.takePhoto({});
+        const photoUri = Platform.OS === 'android' ? `file://${photo.path}` : photo.path;
+        setCapsuleInfo(prev => ({ ...prev, fileUri: photoUri }));
         setPhoto(photoUri);
+      } catch (error) {
+        Alert.alert("Error", error.message);
+      } finally {
         setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error taking picture:', error);
-      Alert.alert('Error', 'Failed to take picture');
-      setIsLoading(false);
     }
   };
 
-  const startRecording = async () => {
-    try {
-      if (cameraRef.current && !isRecording) {
-        setIsRecording(true);
-        await cameraRef.current.startRecording({
-          flash: 'off',
-          onRecordingFinished: (video) => {
-            const videoUri = `file://${video.path}`;
-            setVideoUri(videoUri);
-            setCapsuleInfo(prevState => ({ ...prevState, fileUri: videoUri }));
-            setIsRecording(false);
-          },
-          onRecordingError: (error) => {
-            console.error('Recording error:', error);
-            setIsRecording(false);
-            Alert.alert('Error', 'Failed to record video');
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      setIsRecording(false);
-    }
-  };
-
-  const stopRecording = async () => {
-    try {
-      if (cameraRef.current && isRecording) {
-        await cameraRef.current.stopRecording();
-      }
-    } catch (error) {
-      console.error('Error stopping recording:', error);
-    }
+  const toggleCameraFacing = () => {
+    setCameraPosition((prev) => (prev === 'back' ? 'front' : 'back'));
   };
 
   const SettingsScreen = () => {
     navigation.navigate('SettingsScreen');
   };
 
-  const createCapsule = async () => {
+  const createCapsule = () => {
     if (photo || videoUri) {
-      try {
-        navigation.navigate('CapsuleCreationScreen');
-      } catch (error) {
-        console.error('Error navigating to capsule creation:', error);
-      }
+      navigation.navigate('CapsuleCreationScreen');
     } else {
-      Alert.alert('Media Error', 'No valid photo or video provided.');
+      Alert.alert('Error', 'No photo or video selected');
     }
   };
 
-  const removePhoto = () => {
-    setPhoto(null);
-    setCapsuleInfo(prevState => ({ ...prevState, fileUri: null }));
-  };
-
-  const removeVideo = () => {
-    setVideoUri(null);
-    setCapsuleInfo(prevState => ({ ...prevState, fileUri: null }));
-  };
+  const handleCameraReady = () => setIsCameraReady(true);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {!videoUri && !photo ? (
-        <Camera
-          ref={cameraRef}
-          style={styles.camera}
-          device={device}
-          isActive={true}
-          photo={true}
-          video={true}
-          audio={hasMicrophonePermission}
-        >
-          <TouchableOpacity style={styles.button2} onPress={toggleCameraFacing}>
-            <MaterialIcons name="flip-camera-android" size={26} color="white" />
+        <>
+          <Camera
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive={true}
+            photo={true}
+            video={true}
+            audio={hasMicrophonePermission}
+            onInitialized={handleCameraReady}
+          />
+
+          {/* Overlay Buttons */}
+          <TouchableOpacity style={styles.buttonTopLeft} onPress={toggleCameraFacing}>
+            <Text style={styles.buttonText}>FLIP</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.settingsIcon} onPress={SettingsScreen}>
-            <SimpleLineIcons name="settings" size={26} color="white" />
+
+          <TouchableOpacity style={styles.buttonTopRight} onPress={SettingsScreen}>
+            <Text style={styles.buttonText}>SETTINGS</Text>
           </TouchableOpacity>
-          
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={styles.button} 
+
+          <View style={styles.buttonBottomCenter}>
+            <TouchableOpacity
+              style={styles.captureButton}
               onPress={takePicture}
-              disabled={isLoading}
+              disabled={isLoading || !isCameraReady}
             >
               {isLoading ? (
-                <ActivityIndicator size={66} color="white" />
+                <ActivityIndicator color="white" />
               ) : (
-                <MaterialIcons name="camera" size={66} color="white" />
+                <Text style={styles.buttonText}>CAPTURE</Text>
               )}
             </TouchableOpacity>
-            
-            {/* Uncomment for video recording */}
-            {/* 
-            <TouchableOpacity 
-              style={[styles.button, isRecording && styles.recordingButton]} 
-              onPress={isRecording ? stopRecording : startRecording}
-            >
-              <MaterialIcons 
-                name={isRecording ? "stop" : "videocam"} 
-                size={66} 
-                color="white" 
-              />
-            </TouchableOpacity>
-            */}
           </View>
-        </Camera>
+        </>
       ) : photo ? (
-        <View style={styles.photoContainer}>
-          <Image source={{ uri: photo }} style={styles.fullScreenPhoto} />
-          
-          <TouchableOpacity style={styles.closeButton} onPress={removePhoto}>
-            <Ionicons name="close-circle" size={40} color="white" />
+        <View style={styles.mediaContainer}>
+          <Image source={{ uri: photo }} style={styles.fullScreenImage} />
+          <TouchableOpacity style={styles.buttonTopLeft} onPress={() => setPhoto(null)}>
+            <Text style={styles.buttonText}>CLOSE</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.button3} onPress={createCapsule}>
-            <Text style={styles.text}>Create Capsule</Text>
-            <FontAwesome name="arrow-right" size={24} color="white" style={styles.button4}/>
+          <TouchableOpacity style={styles.createButton} onPress={createCapsule}>
+            <Text style={styles.buttonText}>Create Capsule</Text>
           </TouchableOpacity>
         </View>
-      ) : (
-        <View style={styles.videoContainer}>
-          {/* For video playback, you'll need react-native-video */}
-          <Text style={styles.text}>Video recorded successfully!</Text>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button} onPress={removeVideo}>
-              <Text style={styles.text}>Remove Video</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button3} onPress={createCapsule}>
-              <Text style={styles.text}>Create Capsule</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-    </View>
+      ) : null}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'black',
+  },
+  centered: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'black',
-  },
-  message: {
-    textAlign: 'center',
-    paddingBottom: 10,
-    color: 'white',
-    fontSize: 16,
-  },
-  camera: {
-    flex: 1,
-    width: '100%',
-  },
-  buttonContainer: {
-    position: 'absolute',
-    bottom: 50,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-  },
-  button: {
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recordingButton: {
-    backgroundColor: 'rgba(255, 0, 0, 0.5)',
-  },
-  button2: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 1,
-  },
-  button3: {
-    position: 'absolute',
-    bottom: 30,
-    right: 20,
-    backgroundColor: '#6BAED6',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  button4: {
-    marginLeft: 10,
   },
   text: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  photoContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'black',
-  },
-  fullScreenPhoto: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 1,
-  },
-  settingsIcon: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 1,
-  },
-  videoContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'black',
-  },
-  permissionButton: {
-    backgroundColor: '#6BAED6',
-    padding: 15,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  permissionButtonText: {
     color: 'white',
     fontSize: 16,
+    marginTop: 10,
+  },
+  captureButton: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 15,
+    borderRadius: 10,
+  },
+  buttonText: {
+    color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  buttonTopLeft: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 8,
+  },
+  buttonTopRight: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 8,
+  },
+  buttonBottomCenter: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+  },
+  mediaContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  createButton: {
+    position: 'absolute',
+    bottom: 40,
+    backgroundColor: '#6BAED6',
+    padding: 15,
+    borderRadius: 10,
   },
 });
