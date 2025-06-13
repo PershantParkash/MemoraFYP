@@ -1,0 +1,1 @@
+[{"_id":{"$oid":"684b70882526029fb8867583"},"user_id":{"$oid":"684b70572526029fb8867579"},"friend_user_id":{"$oid":"684b6eba2526029fb8867564"},"status":"pending","created_at":{"$date":"2025-06-13T00:27:52.481Z"},"createdAt":{"$date":"2025-06-13T00:27:52.482Z"},"updatedAt":{"$date":"2025-06-13T00:27:52.482Z"},"__v":0}]
