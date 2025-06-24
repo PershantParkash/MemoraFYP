@@ -2,7 +2,7 @@ import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-// import { LogBox } from 'react-native'; 
+import { LogBox } from 'react-native'; 
 import MyProvider from './android/app/src/context/MyContext';
 
 // Import your screens manually
@@ -17,7 +17,7 @@ import CapsuleCreationScreen from './android/app/src/screens/CapsuleCreationScre
 import SendCapsulePage from './android/app/src/screens/SendCapsulePage';
 
 // Disable all warning notifications
-// LogBox.ignoreAllLogs(true); // Add this line
+LogBox.ignoreAllLogs(true); // Add this line
 
 const Stack = createNativeStackNavigator();
 
