@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { RadioButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 // import { useCreateCapsule } from '../hooks/useCapsuleService';
 import useCapsuleService from '../hooks/useCapsuleService';
 import { MyContext } from '../context/MyContext';
@@ -39,7 +39,11 @@ const SendCapsulePage = () => {
     setIsLoadingFriends(true);
     const token = await AsyncStorage.getItem('authToken');
     if (!token) {
-      Alert.alert('Error', 'No authentication token found.');
+      Toast.show({
+        type: 'error',
+        text1: 'Authentication Error',
+        text2: 'No authentication token found. Please login again.',
+      });
       setIsLoadingFriends(false);
       return;
     }
@@ -64,10 +68,22 @@ const SendCapsulePage = () => {
           })
         );
         setFriends(friendsData);
+        
+        if (friendsData.length > 0) {
+          Toast.show({
+            type: 'success',
+            text1: 'Friends Loaded',
+            text2: `Found ${friendsData.length} friend${friendsData.length > 1 ? 's' : ''} to share with!`,
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching friends:', error);
-      Alert.alert('Error', 'Failed to fetch friends data.');
+      Toast.show({
+        type: 'error',
+        text1: 'Network Error',
+        text2: 'Failed to fetch friends data. Please check your connection.',
+      });
     } finally {
       setIsLoadingFriends(false);
     }
@@ -93,12 +109,26 @@ const SendCapsulePage = () => {
       setSelectedFriends(selectedFriends.filter((id) => id !== friendId));
     } else {
       setSelectedFriends([...selectedFriends, friendId]);
+      
+      // Show a subtle feedback when friend is selected
+      const selectedFriend = friends.find(friend => friend._id === friendId);
+      if (selectedFriend) {
+        Toast.show({
+          type: 'info',
+          text1: 'Friend Selected',
+          text2: `${selectedFriend.username} added to recipients`,
+        });
+      }
     }
   };
 
   const handleSendCapsule = async () => {
     if (selectedFriends.length === 0) {
-      Alert.alert('Error', 'Please select at least one friend to send the capsule.');
+      Toast.show({
+        type: 'error',
+        text1: 'No Recipients Selected',
+        text2: 'Please select at least one friend to send the capsule.',
+      });
       return;
     }
 
@@ -112,10 +142,24 @@ const SendCapsulePage = () => {
         fileUri,
         friends: selectedFriends,
       });
-      navigation.navigate('Tab'); 
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Capsule Sent! 🎉',
+        text2: `Successfully sent to ${selectedFriends.length} friend${selectedFriends.length > 1 ? 's' : ''}`,
+      });
+      
+      // Navigate after a short delay to allow user to see the success message
+      setTimeout(() => {
+        navigation.navigate('Tab');
+      }, 1500);
     } catch (error) {
       console.error('Error sending capsule:', error);
-      Alert.alert('Error', 'Failed to send capsule. Please try again.');
+      Toast.show({
+        type: 'error',
+        text1: 'Send Failed',
+        text2: 'Failed to send capsule. Please try again.',
+      });
     } finally {
       setIsSendingCapsule(false);
     }
@@ -180,9 +224,14 @@ const SendCapsulePage = () => {
             <Text style={[styles.sendButtonText, styles.loadingButtonText]}>Sending...</Text>
           </View>
         ) : (
-          <Text style={styles.sendButtonText}>Send Capsule</Text>
+          <Text style={styles.sendButtonText}>
+            Send Capsule {selectedFriends.length > 0 && `(${selectedFriends.length})`}
+          </Text>
         )}
       </TouchableOpacity>
+
+      {/* Toast Component */}
+      <Toast />
     </View>
   );
 };

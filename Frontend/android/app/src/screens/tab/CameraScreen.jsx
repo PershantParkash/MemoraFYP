@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useContext } from 'react';
+import React, {useState, useRef, useEffect, useContext} from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,13 +12,20 @@ import {
   SafeAreaView,
   Dimensions,
   Animated,
+  AppState, // Added AppState import
+    BackHandler,
 } from 'react-native';
-import { Camera, useCameraDevices, useCameraPermission, useMicrophonePermission } from 'react-native-vision-camera';
-import { useNavigation } from '@react-navigation/native';
+import {
+  Camera,
+  useCameraDevices,
+  useCameraPermission,
+  useMicrophonePermission,
+} from 'react-native-vision-camera';
+import {useNavigation, useFocusEffect} from '@react-navigation/native'; // Added useFocusEffect
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AudioRecord from 'react-native-audio-record';
-import { MyContext } from "../../context/MyContext";
+import {MyContext} from '../../context/MyContext';
 
 let Video = null;
 let LinearGradient = null;
@@ -42,7 +49,7 @@ try {
   console.log('react-native-video not available for audio');
 }
 
-const { width, height } = Dimensions.get('window');
+const {width, height} = Dimensions.get('window');
 
 const THEME = {
   primary: '#6BAED6',
@@ -55,8 +62,8 @@ const THEME = {
   warning: '#FAAD14',
 };
 
-const FallbackGradient = ({ children, style, colors }) => (
-  <View style={[style, { backgroundColor: colors?.[0] || '#000' }]}>
+const FallbackGradient = ({children, style, colors}) => (
+  <View style={[style, {backgroundColor: colors?.[0] || '#000'}]}>
     {children}
   </View>
 );
@@ -65,32 +72,38 @@ const GradientComponent = LinearGradient || FallbackGradient;
 
 export default function CameraScreen() {
   const context = useContext(MyContext);
-  const { capsuleInfo, setCapsuleInfo } = context;
+  const {capsuleInfo, setCapsuleInfo} = context;
   const navigation = useNavigation();
-
+  const [isRecordingInProgress, setIsRecordingInProgress] = useState(false);
   const devices = useCameraDevices();
   const [cameraPosition, setCameraPosition] = useState('back');
   const device = devices.find(d => d.position === cameraPosition) || devices[0];
 
-  const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
-  const { hasPermission: hasMicrophonePermission, requestPermission: requestMicrophonePermission } = useMicrophonePermission();
+  const {
+    hasPermission: hasCameraPermission,
+    requestPermission: requestCameraPermission,
+  } = useCameraPermission();
+  const {
+    hasPermission: hasMicrophonePermission,
+    requestPermission: requestMicrophonePermission,
+  } = useMicrophonePermission();
 
   const [photo, setPhoto] = useState(null);
   const [videoUri, setVideoUri] = useState(null);
   const [audioUri, setAudioUri] = useState(null);
-  
+
   const [isRecording, setIsRecording] = useState(false);
   const [isAudioRecording, setIsAudioRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
-  
+
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
-  
+
   const [currentMode, setCurrentMode] = useState('photo');
   const [recordingTime, setRecordingTime] = useState(0);
 
@@ -101,18 +114,134 @@ export default function CameraScreen() {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
   const recordingIntervalRef = useRef(null);
+  const appStateRef = useRef(AppState.currentState);
+
+  useEffect(() => {
+    setIsRecordingInProgress(isRecording || isAudioRecording);
+  }, [isRecording, isAudioRecording]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        if (isRecordingInProgress) {
+          Alert.alert(
+            'Recording in Progress',
+            'Please stop the current recording before navigating away.',
+            [{text: 'OK'}],
+          );
+          return true; // Prevent default back action
+        }
+        return false; // Allow default back action
+      },
+    );
+
+    return () => backHandler.remove();
+  }, [isRecordingInProgress]);
 
   useEffect(() => {
     requestPermissions();
-    
+
     setTimeout(() => {
       initializeAudioRecord();
     }, 500);
-    
+
+    // Add AppState listener
+    const handleAppStateChange = nextAppState => {
+      if (
+        appStateRef.current.match(/active|foreground/) &&
+        nextAppState === 'background'
+      ) {
+        // App is going to background, stop any active recordings
+        handleAppGoingToBackground();
+      }
+      appStateRef.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange,
+    );
+
     return () => {
       clearInterval(recordingIntervalRef.current);
+      subscription?.remove();
     };
   }, []);
+
+useFocusEffect(
+  React.useCallback(() => {
+    return () => {
+      handleScreenUnfocus(); 
+    };
+  }, [])  
+);
+useEffect(() => {
+  const unsubscribe = navigation.addListener('blur', async () => {
+    // Screen lost focus (navigated away)
+    if (isRecording || isAudioRecording) {
+      // First stop the recording
+      if (isRecording) {
+        await stopVideoRecording();
+      }
+      if (isAudioRecording) {
+        await stopAudioRecording();
+      }
+      
+      // Then show the alert
+      setTimeout(() => {
+        Alert.alert(
+          'Recording Stopped',
+          'Recording was automatically stopped due to navigation.',
+          [{ text: 'OK' }]
+        );
+      }, 100);
+    }
+  });
+
+  return unsubscribe;
+}, [navigation, isRecording, isAudioRecording]);
+
+
+useEffect(() => {
+  if (isRecordingInProgress) {
+    // Prevent tab switching during recording
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      e.preventDefault();
+      Alert.alert(
+        'Recording in Progress',
+        'Please stop the current recording before switching tabs.',
+        [{ text: 'OK' }]
+      );
+    });
+
+    return unsubscribe;
+  }
+}, [navigation, isRecordingInProgress]);
+
+  // Function to handle app going to background
+  const handleAppGoingToBackground = async () => {
+    if (isRecording) {
+      console.log('App going to background, stopping video recording');
+      await stopVideoRecording();
+    }
+    if (isAudioRecording) {
+      console.log('App going to background, stopping audio recording');
+      await stopAudioRecording();
+    }
+  };
+
+  // Function to handle screen unfocus (tab switching)
+  const handleScreenUnfocus = async () => {
+    if (isRecording) {
+      console.log('Screen unfocused, stopping video recording');
+      await stopVideoRecording();
+    }
+    if (isAudioRecording) {
+      console.log('Screen unfocused, stopping audio recording');
+      await stopAudioRecording();
+    }
+  };
 
   useEffect(() => {
     if (isRecording || isAudioRecording) {
@@ -132,7 +261,7 @@ export default function CameraScreen() {
             duration: 1000,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     } else {
       clearInterval(recordingIntervalRef.current);
@@ -157,7 +286,7 @@ export default function CameraScreen() {
             duration: 800,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     } else {
       waveAnimation.setValue(1);
@@ -167,7 +296,7 @@ export default function CameraScreen() {
   const initializeAudioRecord = () => {
     try {
       const options = {
-        sampleRate: 16000, 
+        sampleRate: 16000,
         channels: 1,
         bitsPerSample: 16,
         audioEncoder: 'aac',
@@ -197,7 +326,9 @@ export default function CameraScreen() {
 
   if (hasCameraPermission == null || hasMicrophonePermission == null) {
     return (
-      <GradientComponent colors={[THEME.primary, THEME.primaryDark]} style={styles.centered}>
+      <GradientComponent
+        colors={[THEME.primary, THEME.primaryDark]}
+        style={styles.centered}>
         <ActivityIndicator size="large" color="white" />
         <Text style={styles.text}>Requesting permissions...</Text>
       </GradientComponent>
@@ -206,7 +337,9 @@ export default function CameraScreen() {
 
   if (!device) {
     return (
-      <GradientComponent colors={[THEME.primary, THEME.primaryDark]} style={styles.centered}>
+      <GradientComponent
+        colors={[THEME.primary, THEME.primaryDark]}
+        style={styles.centered}>
         <Text style={styles.text}>Loading camera...</Text>
       </GradientComponent>
     );
@@ -220,11 +353,16 @@ export default function CameraScreen() {
           quality: 0.8,
           enableAutoRedEyeReduction: true,
         });
-        const photoUri = Platform.OS === 'android' ? `file://${photo.path}` : photo.path;
-        setCapsuleInfo(prev => ({ ...prev, fileUri: photoUri, mediaType: 'photo' }));
+        const photoUri =
+          Platform.OS === 'android' ? `file://${photo.path}` : photo.path;
+        setCapsuleInfo(prev => ({
+          ...prev,
+          fileUri: photoUri,
+          mediaType: 'photo',
+        }));
         setPhoto(photoUri);
       } catch (error) {
-        Alert.alert("Error", error.message);
+        Alert.alert('Error', error.message);
       } finally {
         setIsLoading(false);
       }
@@ -238,20 +376,28 @@ export default function CameraScreen() {
         await cameraRef.current.startRecording({
           flash: 'off',
           quality: 'hd',
-          onRecordingFinished: (video) => {
-            const videoUri = Platform.OS === 'android' ? `file://${video.path}` : video.path;
-            setCapsuleInfo(prev => ({ ...prev, fileUri: videoUri, mediaType: 'video' }));
+          onRecordingFinished: video => {
+            const videoUri =
+              Platform.OS === 'android' ? `file://${video.path}` : video.path;
+            setCapsuleInfo(prev => ({
+              ...prev,
+              fileUri: videoUri,
+              mediaType: 'video',
+            }));
             setVideoUri(videoUri);
             setIsRecording(false);
+            console.log('Video recording finished:', videoUri);
           },
-          onRecordingError: (error) => {
-            Alert.alert("Recording Error", error.message);
+          onRecordingError: error => {
+            Alert.alert('Recording Error', error.message);
             setIsRecording(false);
+            console.error('Video recording error:', error);
           },
         });
       } catch (error) {
-        Alert.alert("Error", error.message);
+        Alert.alert('Error', error.message);
         setIsRecording(false);
+        console.error('Start video recording error:', error);
       }
     }
   };
@@ -259,9 +405,13 @@ export default function CameraScreen() {
   const stopVideoRecording = async () => {
     if (cameraRef.current && isRecording) {
       try {
+        console.log('Stopping video recording...');
         await cameraRef.current.stopRecording();
       } catch (error) {
-        Alert.alert("Error", error.message);
+        console.error('Error stopping video recording:', error);
+        Alert.alert('Error', 'Failed to stop video recording properly');
+        // Force reset recording state even if stop fails
+        setIsRecording(false);
       }
     }
   };
@@ -269,42 +419,51 @@ export default function CameraScreen() {
   const startAudioRecording = async () => {
     try {
       initializeAudioRecord();
-      
+
       setTimeout(() => {
         try {
           AudioRecord.start();
           setIsAudioRecording(true);
+          console.log('Audio recording started');
         } catch (error) {
           console.error('Error starting audio recording:', error);
-          Alert.alert("Audio Recording Error", "Failed to start recording. Please try again.");
+          Alert.alert(
+            'Audio Recording Error',
+            'Failed to start recording. Please try again.',
+          );
           setIsAudioRecording(false);
         }
       }, 100);
-      
     } catch (error) {
       console.error('Audio Recording Error:', error);
-      Alert.alert("Audio Recording Error", error.message);
+      Alert.alert('Audio Recording Error', error.message);
       setIsAudioRecording(false);
     }
   };
 
   const stopAudioRecording = async () => {
     try {
+      console.log('Stopping audio recording...');
       const audioFile = await AudioRecord.stop();
-      const audioUri = Platform.OS === 'android' ? `file://${audioFile}` : audioFile;
-      
+      const audioUri =
+        Platform.OS === 'android' ? `file://${audioFile}` : audioFile;
+
       if (audioUri && audioUri !== 'file://') {
-        setCapsuleInfo(prev => ({ ...prev, fileUri: audioUri, mediaType: 'audio' }));
+        setCapsuleInfo(prev => ({
+          ...prev,
+          fileUri: audioUri,
+          mediaType: 'audio',
+        }));
         setAudioUri(audioUri);
         console.log('Audio recorded successfully:', audioUri);
       } else {
         throw new Error('Invalid audio file path');
       }
-      
+
       setIsAudioRecording(false);
     } catch (error) {
       console.error('Error stopping audio recording:', error);
-      Alert.alert("Error", "Failed to save audio recording. Please try again.");
+      Alert.alert('Error', 'Failed to save audio recording. Please try again.');
       setIsAudioRecording(false);
     }
   };
@@ -337,17 +496,20 @@ export default function CameraScreen() {
 
   const playAudio = () => {
     if (!audioUri) return;
-    
+
     if (!Video) {
-      Alert.alert('Audio Preview', 'Audio recorded successfully! Video library required for preview.');
+      Alert.alert(
+        'Audio Preview',
+        'Audio recorded successfully! Video library required for preview.',
+      );
       return;
     }
-    
+
     setIsAudioPlaying(!isAudioPlaying);
   };
 
   const toggleCameraFacing = () => {
-    setCameraPosition((prev) => (prev === 'back' ? 'front' : 'back'));
+    setCameraPosition(prev => (prev === 'back' ? 'front' : 'back'));
   };
 
   const SettingsScreen = () => {
@@ -372,22 +534,24 @@ export default function CameraScreen() {
     setAudioDuration(0);
     setVideoProgress(0);
     setVideoDuration(0);
-    
-    setCapsuleInfo(prev => ({ ...prev, fileUri: null, mediaType: null }));
+
+    setCapsuleInfo(prev => ({...prev, fileUri: null, mediaType: null}));
   };
 
   const handleCameraReady = () => setIsCameraReady(true);
 
-  const formatTime = (seconds) => {
+  const formatTime = seconds => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs
+      .toString()
+      .padStart(2, '0')}`;
   };
 
   const getCurrentMedia = () => {
-    if (photo) return { uri: photo, type: 'photo' };
-    if (videoUri) return { uri: videoUri, type: 'video' };
-    if (audioUri) return { uri: audioUri, type: 'audio' };
+    if (photo) return {uri: photo, type: 'photo'};
+    if (videoUri) return {uri: videoUri, type: 'video'};
+    if (audioUri) return {uri: audioUri, type: 'audio'};
     return null;
   };
 
@@ -411,33 +575,33 @@ export default function CameraScreen() {
           )}
 
           {currentMode === 'audio' && (
-            <GradientComponent 
-              colors={[THEME.primary, THEME.secondary]} 
-              style={styles.audioBackground}
-            >
+            <GradientComponent
+              colors={[THEME.primary, THEME.secondary]}
+              style={styles.audioBackground}>
               <View style={styles.audioWaveContainer}>
-                <Animated.View style={[
-                  styles.micContainer,
-                  { transform: [{ scale: waveAnimation }] }
-                ]}>
+                <Animated.View
+                  style={[
+                    styles.micContainer,
+                    {transform: [{scale: waveAnimation}]},
+                  ]}>
                   <MaterialIcons name="mic" size={100} color="white" />
                 </Animated.View>
-                
+
                 {isAudioRecording && (
                   <View style={styles.waveAnimation}>
-                    {[1, 2, 3].map((i) => (
+                    {[1, 2, 3].map(i => (
                       <Animated.View
                         key={i}
                         style={[
                           styles.wave,
                           styles[`wave${i}`],
-                          { 
-                            transform: [{ scale: pulseAnimation }],
+                          {
+                            transform: [{scale: pulseAnimation}],
                             opacity: pulseAnimation.interpolate({
                               inputRange: [1, 1.2],
                               outputRange: [0.3, 0.1],
-                            })
-                          }
+                            }),
+                          },
                         ]}
                       />
                     ))}
@@ -445,88 +609,164 @@ export default function CameraScreen() {
                 )}
               </View>
               <Text style={styles.audioText}>
-                {isAudioRecording ? 'Recording Audio...' : 'Tap to Record Audio'}
+                {isAudioRecording
+                  ? 'Recording Audio...'
+                  : 'Tap to Record Audio'}
               </Text>
               {isAudioRecording && (
-                <Text style={styles.recordingTime}>{formatTime(recordingTime)}</Text>
+                <Text style={styles.recordingTime}>
+                  {formatTime(recordingTime)}
+                </Text>
               )}
             </GradientComponent>
           )}
 
-          <GradientComponent 
-            colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0)']} 
-            style={styles.topBar}
-          >
+          <GradientComponent
+            colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0)']}
+            style={styles.topBar}>
             <View style={styles.topControls}>
               {currentMode !== 'audio' && (
-                <TouchableOpacity style={styles.topButton} onPress={toggleCameraFacing}>
-                  <MaterialIcons name="flip-camera-ios" size={28} color="white" />
+                <TouchableOpacity
+                  style={styles.topButton}
+                  onPress={toggleCameraFacing}>
+                  <MaterialIcons
+                    name="flip-camera-ios"
+                    size={28}
+                    color="white"
+                  />
                 </TouchableOpacity>
               )}
-              
-              <TouchableOpacity style={styles.topButton} onPress={SettingsScreen}>
-                <MaterialIcons name="settings" size={28} color="white" />
+
+              <TouchableOpacity
+                style={[
+                  styles.topButton,
+                  isRecordingInProgress && styles.disabledButton, // Add this line
+                ]}
+                onPress={() => {
+                  if (isRecordingInProgress) {
+                    Alert.alert(
+                      'Recording in Progress',
+                      'Please stop the current recording before accessing settings.',
+                      [{text: 'OK'}],
+                    );
+                    return;
+                  }
+                  SettingsScreen();
+                }}
+                disabled={isRecordingInProgress} // Add this line
+              >
+                <MaterialIcons
+                  name="settings"
+                  size={28}
+                  color={
+                    isRecordingInProgress ? 'rgba(255,255,255,0.3)' : 'white'
+                  }
+                />
               </TouchableOpacity>
             </View>
 
             {/* Recording Indicator */}
             {(isRecording || isAudioRecording) && (
-              <Animated.View style={[
-                styles.recordingIndicator,
-                { transform: [{ scale: pulseAnimation }] }
-              ]}>
+              <Animated.View
+                style={[
+                  styles.recordingIndicator,
+                  {transform: [{scale: pulseAnimation}]},
+                ]}>
                 <View style={styles.recordingDot} />
-                <Text style={styles.recordingText}>REC {formatTime(recordingTime)}</Text>
+                <Text style={styles.recordingText}>
+                  REC {formatTime(recordingTime)}
+                </Text>
               </Animated.View>
             )}
           </GradientComponent>
 
           <View style={styles.modeSelector}>
-            {['photo', 'video', 'audio'].map((mode) => (
+            {['photo', 'video', 'audio'].map(mode => (
               <TouchableOpacity
                 key={mode}
                 style={[
                   styles.modeButton,
-                  currentMode === mode && styles.activeModeButton
+                  currentMode === mode && styles.activeModeButton,
+                  isRecordingInProgress &&
+                    currentMode !== mode &&
+                    styles.disabledModeButton, // Add this line
                 ]}
-                onPress={() => setCurrentMode(mode)}
+                onPress={() => {
+                  if (isRecordingInProgress) {
+                    Alert.alert(
+                      'Recording in Progress',
+                      'Please stop the current recording before switching modes.',
+                      [{text: 'OK'}],
+                    );
+                    return;
+                  }
+                  setCurrentMode(mode);
+                }}
+                disabled={isRecordingInProgress && currentMode !== mode} // Add this line
               >
-                <MaterialIcons 
+                <MaterialIcons
                   name={
-                    mode === 'photo' ? 'photo-camera' : 
-                    mode === 'video' ? 'videocam' : 'mic'
-                  } 
-                  size={24} 
-                  color={currentMode === mode ? THEME.primary : 'white'} 
+                    mode === 'photo'
+                      ? 'photo-camera'
+                      : mode === 'video'
+                      ? 'videocam'
+                      : 'mic'
+                  }
+                  size={24}
+                  color={
+                    currentMode === mode
+                      ? THEME.primary
+                      : isRecordingInProgress && currentMode !== mode
+                      ? 'rgba(255,255,255,0.3)'
+                      : 'white'
+                  }
                 />
-                <Text style={[
-                  styles.modeText,
-                  currentMode === mode && styles.activeModeText
-                ]}>
+                <Text
+                  style={[
+                    styles.modeText,
+                    currentMode === mode && styles.activeModeText,
+                    isRecordingInProgress &&
+                      currentMode !== mode &&
+                      styles.disabledModeText, // Add this line
+                  ]}>
                   {mode.toUpperCase()}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <GradientComponent 
-            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']} 
-            style={styles.bottomBar}
-          >
+          <GradientComponent
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']}
+            style={styles.bottomBar}>
             <View style={styles.captureContainer}>
-              <Animated.View style={[
-                { transform: [{ scale: (isRecording || isAudioRecording) ? pulseAnimation : 1 }] }
-              ]}>
+              <Animated.View
+                style={[
+                  {
+                    transform: [
+                      {
+                        scale:
+                          isRecording || isAudioRecording ? pulseAnimation : 1,
+                      },
+                    ],
+                  },
+                ]}>
                 <TouchableOpacity
                   style={[
                     styles.captureButton,
                     currentMode === 'photo' && styles.photoButton,
-                    currentMode === 'video' && (isRecording ? styles.recordingButton : styles.videoButton),
-                    currentMode === 'audio' && (isAudioRecording ? styles.recordingButton : styles.audioButton),
+                    currentMode === 'video' &&
+                      (isRecording
+                        ? styles.recordingButton
+                        : styles.videoButton),
+                    currentMode === 'audio' &&
+                      (isAudioRecording
+                        ? styles.recordingButton
+                        : styles.audioButton),
                   ]}
                   onPress={handleCapture}
-                  disabled={isLoading || (!isCameraReady && currentMode !== 'audio')}
-                >
+                  disabled={
+                    isLoading || (!isCameraReady && currentMode !== 'audio')
+                  }>
                   {isLoading ? (
                     <ActivityIndicator color="white" size="large" />
                   ) : (
@@ -535,17 +775,17 @@ export default function CameraScreen() {
                         <View style={styles.photoButtonInner} />
                       )}
                       {currentMode === 'video' && (
-                        <MaterialIcons 
-                          name={isRecording ? "stop" : "play-arrow"} 
-                          size={40} 
-                          color="white" 
+                        <MaterialIcons
+                          name={isRecording ? 'stop' : 'play-arrow'}
+                          size={40}
+                          color="white"
                         />
                       )}
                       {currentMode === 'audio' && (
-                        <MaterialIcons 
-                          name={isAudioRecording ? "stop" : "mic"} 
-                          size={40} 
-                          color="white" 
+                        <MaterialIcons
+                          name={isAudioRecording ? 'stop' : 'mic'}
+                          size={40}
+                          color="white"
                         />
                       )}
                     </>
@@ -558,23 +798,26 @@ export default function CameraScreen() {
       ) : (
         <View style={styles.previewContainer}>
           {currentMedia.type === 'photo' && (
-            <Image source={{ uri: currentMedia.uri }} style={styles.fullScreenMedia} />
+            <Image
+              source={{uri: currentMedia.uri}}
+              style={styles.fullScreenMedia}
+            />
           )}
-          
+
           {currentMedia.type === 'video' && (
             <View style={styles.videoContainer}>
               {Video ? (
                 <>
                   <Video
                     ref={videoRef}
-                    source={{ uri: currentMedia.uri }}
+                    source={{uri: currentMedia.uri}}
                     style={styles.fullScreenMedia}
                     paused={!isVideoPlaying}
                     resizeMode="cover"
-                    onLoad={(data) => {
+                    onLoad={data => {
                       setVideoDuration(data.duration);
                     }}
-                    onProgress={(data) => {
+                    onProgress={data => {
                       setVideoProgress(data.currentTime);
                     }}
                     onEnd={() => {
@@ -582,118 +825,142 @@ export default function CameraScreen() {
                       setVideoProgress(0);
                     }}
                   />
-                  
-                  <TouchableOpacity style={styles.videoOverlay} onPress={playVideo}>
+
+                  <TouchableOpacity
+                    style={styles.videoOverlay}
+                    onPress={playVideo}>
                     <View style={styles.videoControls}>
-                      <MaterialIcons 
-                        name={isVideoPlaying ? "pause" : "play-arrow"} 
-                        size={80} 
-                        color="rgba(255,255,255,0.9)" 
+                      <MaterialIcons
+                        name={isVideoPlaying ? 'pause' : 'play-arrow'}
+                        size={80}
+                        color="rgba(255,255,255,0.9)"
                       />
                     </View>
                   </TouchableOpacity>
-                  
+
                   <View style={styles.progressContainer}>
                     <View style={styles.progressBar}>
-                      <View 
+                      <View
                         style={[
-                          styles.progressFill, 
-                          { width: `${(videoProgress / videoDuration) * 100}%` }
-                        ]} 
+                          styles.progressFill,
+                          {width: `${(videoProgress / videoDuration) * 100}%`},
+                        ]}
                       />
                     </View>
                     <Text style={styles.timeText}>
-                      {formatTime(Math.floor(videoProgress))} / {formatTime(Math.floor(videoDuration))}
+                      {formatTime(Math.floor(videoProgress))} /{' '}
+                      {formatTime(Math.floor(videoDuration))}
                     </Text>
                   </View>
                 </>
               ) : (
                 <View style={styles.videoFallback}>
-                  <MaterialIcons name="play-circle-filled" size={120} color="white" />
+                  <MaterialIcons
+                    name="play-circle-filled"
+                    size={120}
+                    color="white"
+                  />
                   <Text style={styles.mediaText}>Video Recorded</Text>
-                  <Text style={styles.fallbackText}>Install react-native-video for preview</Text>
+                  <Text style={styles.fallbackText}>
+                    Install react-native-video for preview
+                  </Text>
                 </View>
               )}
             </View>
           )}
-          
+
           {currentMedia.type === 'audio' && (
-            <GradientComponent colors={[THEME.primary, THEME.primaryDark]} style={styles.audioPreview}>
+            <GradientComponent
+              colors={[THEME.primary, THEME.primaryDark]}
+              style={styles.audioPreview}>
               {Video && audioUri && (
                 <Video
                   ref={audioRef}
-                  source={{ uri: audioUri }}
-                  style={{ width: 0, height: 0 }}
+                  source={{uri: audioUri}}
+                  style={{width: 0, height: 0}}
                   paused={!isAudioPlaying}
-                  onLoad={(data) => {
+                  onLoad={data => {
                     setAudioDuration(data.duration);
                   }}
-                  onProgress={(data) => {
+                  onProgress={data => {
                     setAudioProgress(data.currentTime);
                   }}
                   onEnd={() => {
                     setIsAudioPlaying(false);
                     setAudioProgress(0);
                   }}
-                  onError={(error) => {
+                  onError={error => {
                     console.log('Audio playback error:', error);
                     Alert.alert('Audio Error', 'Unable to play audio');
                     setIsAudioPlaying(false);
                   }}
                 />
               )}
-              
+
               <View style={styles.audioVisualization}>
                 <MaterialIcons name="audiotrack" size={120} color="white" />
-                
+
                 <View style={styles.waveformContainer}>
                   {[...Array(20)].map((_, i) => (
-                    <Animated.View 
+                    <Animated.View
                       key={i}
                       style={[
                         styles.waveformBar,
-                        { 
+                        {
                           height: Math.random() * 40 + 20,
                           opacity: isAudioPlaying ? 1 : 0.5,
-                          transform: [{ 
-                            scaleY: isAudioPlaying ? 
-                              Animated.multiply(waveAnimation, 1 + Math.random() * 0.5) : 1 
-                          }]
-                        }
-                      ]} 
+                          transform: [
+                            {
+                              scaleY: isAudioPlaying
+                                ? Animated.multiply(
+                                    waveAnimation,
+                                    1 + Math.random() * 0.5,
+                                  )
+                                : 1,
+                            },
+                          ],
+                        },
+                      ]}
                     />
                   ))}
                 </View>
-                
-                <Text style={styles.mediaText}>Audio Recorded Successfully!</Text>
+
+                <Text style={styles.mediaText}>
+                  Audio Recorded Successfully!
+                </Text>
                 {audioDuration > 0 && (
-                  <Text style={styles.subText}>Duration: {formatTime(Math.floor(audioDuration))}</Text>
+                  <Text style={styles.subText}>
+                    Duration: {formatTime(Math.floor(audioDuration))}
+                  </Text>
                 )}
-                
-                <TouchableOpacity style={styles.audioPlayButton} onPress={playAudio}>
-                  <MaterialIcons 
-                    name={isAudioPlaying ? "pause" : "play-arrow"} 
-                    size={50} 
-                    color="white" 
+
+                <TouchableOpacity
+                  style={styles.audioPlayButton}
+                  onPress={playAudio}>
+                  <MaterialIcons
+                    name={isAudioPlaying ? 'pause' : 'play-arrow'}
+                    size={50}
+                    color="white"
                   />
                 </TouchableOpacity>
-                
+
                 {audioDuration > 0 && (
                   <View style={styles.audioProgressContainer}>
                     <View style={styles.progressBar}>
-                      <View 
+                      <View
                         style={[
-                          styles.progressFill, 
-                          { width: `${(audioProgress / audioDuration) * 100}%` }
-                        ]} 
+                          styles.progressFill,
+                          {width: `${(audioProgress / audioDuration) * 100}%`},
+                        ]}
                       />
                     </View>
                     <Text style={styles.timeText}>
-                      {formatTime(Math.floor(audioProgress))} / {formatTime(Math.floor(audioDuration))}
+                      {formatTime(Math.floor(audioProgress))} /{' '}
+                      {formatTime(Math.floor(audioDuration))}
                     </Text>
                   </View>
                 )}
-                
+
                 {!Video && (
                   <Text style={styles.fallbackText}>
                     Audio recorded successfully!{'\n'}
@@ -705,20 +972,20 @@ export default function CameraScreen() {
           )}
 
           {/* Preview Controls */}
-          <GradientComponent 
-            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']} 
-            style={styles.previewControls}
-          >
+          <GradientComponent
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']}
+            style={styles.previewControls}>
             <TouchableOpacity style={styles.retakeButton} onPress={clearMedia}>
               <MaterialIcons name="refresh" size={24} color="white" />
               <Text style={styles.controlButtonText}>Retake</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.createButton} onPress={createCapsule}>
-              <GradientComponent 
-                colors={[THEME.primary, THEME.secondary]} 
-                style={styles.createButtonGradient}
-              >
+
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={createCapsule}>
+              <GradientComponent
+                colors={[THEME.primary, THEME.secondary]}
+                style={styles.createButtonGradient}>
                 <MaterialIcons name="add" size={24} color="white" />
                 <Text style={styles.createButtonText}>Create Capsule</Text>
               </GradientComponent>
@@ -746,7 +1013,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontWeight: '600',
   },
-  
+
   audioBackground: {
     flex: 1,
     justifyContent: 'center',
@@ -796,7 +1063,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 20,
   },
-  
+
   topBar: {
     position: 'absolute',
     top: 0,
@@ -842,7 +1109,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
-  
+
   modeSelector: {
     position: 'absolute',
     bottom: 150,
@@ -874,7 +1141,7 @@ const styles = StyleSheet.create({
   activeModeText: {
     color: THEME.primary,
   },
-  
+
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -918,7 +1185,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#333',
   },
-  
+
   previewContainer: {
     flex: 1,
     backgroundColor: 'black',
@@ -927,7 +1194,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  
+
   videoContainer: {
     flex: 1,
     position: 'relative',
@@ -952,7 +1219,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#2a2a2a',
   },
-  
+
   audioPreview: {
     flex: 1,
     justifyContent: 'center',
@@ -1000,7 +1267,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  
+
   // Progress Styles
   progressContainer: {
     position: 'absolute',
@@ -1026,7 +1293,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: '500',
   },
-  
+
   // Fallback styles
   mediaText: {
     color: 'white',
@@ -1040,7 +1307,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     textAlign: 'center',
   },
-  
+
   // Preview Controls
   previewControls: {
     position: 'absolute',
@@ -1083,4 +1350,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  disabledModeButton: {
+  backgroundColor: 'rgba(0,0,0,0.3)',
+},
+disabledModeText: {
+  color: 'rgba(255,255,255,0.3)',
+},
+disabledButton: {
+  backgroundColor: 'rgba(0,0,0,0.3)',
+},
 });

@@ -8,10 +8,11 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
-   Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message'; // ✅ Toast Import
+
 const { height } = Dimensions.get('window');
 
 const RegistrationStep1 = () => {
@@ -23,39 +24,72 @@ const RegistrationStep1 = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigation = useNavigation();
 
-   const validateFields = () => {
+  const validateFields = () => {
     if (!fullName.trim()) {
-      Alert.alert('Validation Error', 'Full Name is required.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Full Name is required.',
+      });
       return false;
     }
 
     if (!email.trim()) {
-      Alert.alert('Validation Error', 'Email is required.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Email is required.',
+      });
       return false;
     }
 
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      Alert.alert('Validation Error', 'Invalid email format.');
-      return false;
-    }
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|szabist\.pk|hotmail\.com|abc\.edu)$/;
+
+if (!emailRegex.test(email)) {
+  Toast.show({
+    type: 'error',
+    text1: 'Validation Error',
+    text2: 'Only selected domains are allowed: Gmail, Yahoo, Hotmail, ABC, or Szabist.',
+  });
+  return false;
+}
+
+
+
 
     if (!password) {
-      Alert.alert('Validation Error', 'Password is required.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Password is required.',
+      });
       return false;
     }
 
     if (password.length < 6) {
-      Alert.alert('Validation Error', 'Password must be at least 6 characters.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Password must be at least 6 characters.',
+      });
       return false;
     }
 
     if (!confirmPassword) {
-      Alert.alert('Validation Error', 'Confirm Password is required.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Confirm Password is required.',
+      });
       return false;
     }
 
     if (confirmPassword !== password) {
-      Alert.alert('Validation Error', 'Passwords do not match.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Passwords do not match.',
+      });
       return false;
     }
 
@@ -65,17 +99,26 @@ const RegistrationStep1 = () => {
   const handleRegister = () => {
     if (!validateFields()) return;
 
-    navigation.navigate('RegistrationStep2', { fullName, email, password });
+
+    Toast.show({
+      type: 'success',
+      text1: 'Validation Passed',
+      text2: 'Proceeding to Step 2...',
+    });
+
+   
+    setTimeout(() => {
+      navigation.navigate('RegistrationStep2', { fullName, email, password });
+    }, 1500);
   };
-
-
 
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Image 
-        source={require('../assets/images/logo.png')}
-         style={styles.logo} />
+          source={require('../assets/images/logo.png')}
+          style={styles.logo} 
+        />
         <Text style={styles.tagline}>Begin Your Memory Journey</Text>
       </View>
 
@@ -168,7 +211,10 @@ const RegistrationStep1 = () => {
           <View style={styles.line} />
         </View>
 
-        <TouchableOpacity style={styles.loginButton}  onPress={() => {navigation.navigate('Index');}}>
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={() => navigation.navigate('Index')}
+        >
           <Text style={styles.loginButtonText}>Already have an account? Log In</Text>
         </TouchableOpacity>
       </ScrollView>

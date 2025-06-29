@@ -7,7 +7,6 @@ import {
   Image,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   ScrollView,
 } from 'react-native';
 
@@ -16,6 +15,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import useProfileService from '../hooks/useProfileService';
 import { MyContext } from '../context/MyContext';
 
@@ -43,27 +43,51 @@ const EditProfileScreen = () => {
 
   const validateFields = () => {
     if (!profileData.cnic.trim()) {
-      Alert.alert('Validation Error', 'Please enter your CNIC.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter your CNIC.',
+      });
       return false;
     }
     if (!/^\d{13}$/.test(profileData.cnic)) {
-      Alert.alert('Validation Error', 'CNIC must be 13 digits.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'CNIC must be 13 digits.',
+      });
       return false;
     }
     if (!profileData.contactNo.trim()) {
-      Alert.alert('Validation Error', 'Please enter your contact number.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter your contact number.',
+      });
       return false;
     }
     if (!/^\d{10,15}$/.test(profileData.contactNo)) {
-      Alert.alert('Validation Error', 'Contact number must be between 10-15 digits.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Contact number must be between 10-15 digits.',
+      });
       return false;
     }
     if (!profileData.gender) {
-      Alert.alert('Validation Error', 'Please select your gender.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select your gender.',
+      });
       return false;
     }
     if (!profileData.address.trim()) {
-      Alert.alert('Validation Error', 'Please enter your address.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter your address.',
+      });
       return false;
     }
     return true;
@@ -76,11 +100,19 @@ const EditProfileScreen = () => {
     try {
       await updateUserProfile(profileData, profileChanged);
       setUserDetails(profileData);
-      Alert.alert('Success', 'Profile updated successfully.');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Profile updated successfully.',
+      });
       navigation.navigate('CameraScreen');
     } catch (error) {
       const message = error?.response?.data?.message || 'An unknown error occurred.';
-      Alert.alert('Error', message);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -94,8 +126,18 @@ const EditProfileScreen = () => {
       const uri = result.assets[0].uri;
       setProfileData({ ...profileData, profilePicture: uri });
       setProfileChanged(true);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Image Selected',
+        text2: 'Profile picture updated successfully.',
+      });
     } catch (error) {
-      Alert.alert('Error', 'Failed to select image.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to select image.',
+      });
     }
   };
 
@@ -246,6 +288,9 @@ const EditProfileScreen = () => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Toast Component */}
+      <Toast />
     </ScrollView>
   );
 };

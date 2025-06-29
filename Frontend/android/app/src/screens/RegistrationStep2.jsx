@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  Alert,
   ScrollView,
   Dimensions
 } from 'react-native';
@@ -16,6 +15,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Toast from 'react-native-toast-message';
 import useAuthService from '../hooks/useAuthService';
 
 const { height } = Dimensions.get('window');
@@ -53,46 +53,92 @@ const RegistrationStep2 = () => {
 
     launchImageLibrary(options, (response) => {
       if (response.didCancel) {
-        Alert.alert('No image selected', 'Please select an image.');
+        Toast.show({
+          type: 'info',
+          text1: 'No Image Selected',
+          text2: 'Please select an image to continue.',
+        });
       } else if (response.errorMessage) {
-        Alert.alert('Error', response.errorMessage);
+        Toast.show({
+          type: 'error',
+          text1: 'Image Selection Error',
+          text2: response.errorMessage,
+        });
       } else if (response.assets && response.assets[0]) {
         setProfilePic(response.assets[0].uri);
+        Toast.show({
+          type: 'success',
+          text1: 'Image Selected',
+          text2: 'Profile picture added successfully!',
+        });
       }
     });
   };
 
   const handleRemoveImage = () => {
     setProfilePic('');
+    Toast.show({
+      type: 'info',
+      text1: 'Image Removed',
+      text2: 'Profile picture has been removed.',
+    });
   };
 
   const validateFields = () => {
     if (!cnic.trim()) {
-      Alert.alert('Validation Error', 'Please enter your CNIC.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter your CNIC.',
+      });
       return false;
     }
     if (!/^\d{13}$/.test(cnic)) {
-      Alert.alert('Validation Error', 'CNIC must be 13 digits.');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid CNIC',
+        text2: 'CNIC must be exactly 13 digits.',
+      });
       return false;
     }
     if (!contactNo.trim()) {
-      Alert.alert('Validation Error', 'Please enter your contact number.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter your contact number.',
+      });
       return false;
     }
     if (!/^\d{10,12}$/.test(contactNo)) {
-      Alert.alert('Validation Error', 'Contact number must be between 10-11 digits.');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Contact Number',
+        text2: 'Contact number must be between 10-12 digits.',
+      });
       return false;
     }
     if (!dob.trim()) {
-      Alert.alert('Validation Error', 'Please select your date of birth.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select your date of birth.',
+      });
       return false;
     }
     if (!gender) {
-      Alert.alert('Validation Error', 'Please select your gender.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select your gender.',
+      });
       return false;
     }
     if (!address.trim()) {
-      Alert.alert('Validation Error', 'Please enter your address.');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter your address.',
+      });
       return false;
     }
     return true;
@@ -117,16 +163,28 @@ const RegistrationStep2 = () => {
           contactNo,
           profilePic
         });
-        Alert.alert('Success', 'Profile created successfully.');
-        navigation.navigate('Tab');
+        
+        Toast.show({
+          type: 'success',
+          text1: 'Registration Successful! 🎉',
+          text2: 'Your profile has been created successfully.',
+        });
+        
+        // Navigate after a short delay to allow user to see the success message
+        setTimeout(() => {
+          navigation.navigate('Tab');
+        }, 1500);
       }
     } catch (error) {
-      Alert.alert('Error', error.message || 'An unknown error occurred. Please try again.');
+      Toast.show({
+        type: 'error',
+        text1: 'Registration Failed',
+        text2: error.message || 'An unknown error occurred. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <View style={styles.container}>
@@ -264,6 +322,9 @@ const RegistrationStep2 = () => {
           <Text style={styles.backButtonText}>Go Back to Step 1</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Toast Component - Add this at the end of your component */}
+      <Toast />
     </View>
   );
 };

@@ -7,11 +7,12 @@ import {
   Image,
   StyleSheet,
   Dimensions,
-  Alert,    
+  Alert,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import useAuthService from '../../src/hooks/useAuthService'
+import useAuthService from '../../src/hooks/useAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 const { height } = Dimensions.get('window');
 
@@ -21,46 +22,69 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
-const { loginUser } = useAuthService();
+  const { loginUser } = useAuthService();
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
   const handleLogin = async () => {
-    setIsLoading(true);
     if (!email && !password) {
-      Alert.alert('Login Error', 'Please enter your email and password.');
+      Toast.show({
+        type: 'error',
+        text1: 'Login Error',
+        text2: 'Please enter your email and password.',
+      });
       return;
     }
     if (!email) {
-      Alert.alert('Login Error', 'Please enter your email address.');
+      Toast.show({
+        type: 'error',
+        text1: 'Login Error',
+        text2: 'Please enter your email address.',
+      });
       return;
     }
     if (!password) {
-      Alert.alert('Login Error', 'Please enter your password.');
+      Toast.show({
+        type: 'error',
+        text1: 'Login Error',
+        text2: 'Please enter your password.',
+      });
       return;
     }
-
+    setIsLoading(true);
     try {
       const result = await loginUser(email, password);
-      
+
       if (result.success) {
         await AsyncStorage.setItem('authToken', result.token);
-        
+
         navigation.navigate('Tab');
-        
-        Alert.alert('Login Successful', 'Welcome back to MemoryCapsule!');
+
+        Toast.show({
+          type: 'success',
+          text1: 'Login Successful!',
+          text2: 'Welcome back to MemoryCapsule!',
+        });
+
       } else {
-        Alert.alert('Login Failed', result.message);
+        Toast.show({
+          type: 'error',
+          text1: 'Login Failed',
+          text2: result.message,
+        });
       }
     } catch (error) {
-      Alert.alert('Login Failed', 'An unexpected error occurred. Please try again.');
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: 'An unexpected error occurred. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }
   };
-   
 
   return (
     <View style={styles.container}>
@@ -102,8 +126,7 @@ const { loginUser } = useAuthService();
             />
             <TouchableOpacity
               style={styles.eyeButton}
-              onPress={togglePasswordVisibility}
-            >
+              onPress={togglePasswordVisibility}>
               <Ionicons
                 name={showPassword ? 'eye-off' : 'eye'}
                 size={24}
@@ -116,8 +139,7 @@ const { loginUser } = useAuthService();
         <TouchableOpacity
           style={styles.button}
           onPress={handleLogin}
-          disabled={isLoading}
-        >
+          disabled={isLoading}>
           <Text style={styles.buttonText}>
             {isLoading ? 'Logging in...' : 'Log In'}
           </Text>
@@ -131,7 +153,9 @@ const { loginUser } = useAuthService();
 
         <TouchableOpacity
           style={styles.signupButton}
-          onPress={() => { navigation.navigate('RegistrationStep1'); }}
+          onPress={() => {
+            navigation.navigate('RegistrationStep1');
+          }}
         // onPress={() => {navigation.navigate('SettingsScreen');}}
         >
           <Text style={styles.signupButtonText}>Create New Account</Text>

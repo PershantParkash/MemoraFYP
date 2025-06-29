@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance'; // Adjust the path as needed
 
@@ -14,7 +14,11 @@ const useFriendService = () => {
     try {
       const storedToken = await AsyncStorage.getItem('authToken');
       if (!storedToken) {
-        Alert.alert('Error', 'Authentication token not found.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Authentication token not found.',
+        });
         return null;
       }
       return storedToken;
@@ -44,7 +48,11 @@ const useFriendService = () => {
       setAllProfiles(filteredProfiles || []);
     } catch (error) {
       console.error('Error fetching profiles:', error);
-      Alert.alert('Error', 'Failed to load profiles.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load profiles.',
+      });
     }
   };
 
@@ -65,7 +73,11 @@ const useFriendService = () => {
       setPendingRequestsProfile(data.pendingRequests || []);
     } catch (error) {
       console.error('Error fetching pending requests:', error);
-      Alert.alert('Error', 'Failed to load pending requests.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load pending requests.',
+      });
     }
   };
 
@@ -86,7 +98,11 @@ const useFriendService = () => {
       );
 
       const data = response.data;
-      Alert.alert('Success', data.message || 'Friend request accepted!');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: data.message || 'Friend request accepted!',
+      });
       
       // Update state to remove the accepted request
       setPendingRequests((prev) => prev.filter((r) => r.userId !== friendshipId));
@@ -95,7 +111,11 @@ const useFriendService = () => {
       return { success: true, message: data.message };
     } catch (error) {
       console.error('Error accepting request:', error);
-      Alert.alert('Error', 'Could not accept request.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Could not accept request.',
+      });
       
       // Fallback: refresh pending requests
       await fetchPendingRequests();
@@ -120,7 +140,11 @@ const useFriendService = () => {
       );
 
       const data = response.data;
-      Alert.alert('Success', data.message || 'Friend request declined!');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: data.message || 'Friend request declined!',
+      });
       
       // Update state to remove the declined request
       setPendingRequests((prev) => prev.filter((r) => r.userId !== friendshipId));
@@ -129,7 +153,11 @@ const useFriendService = () => {
       return { success: true, message: data.message };
     } catch (error) {
       console.error('Error declining request:', error);
-      Alert.alert('Error', 'Could not decline request.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Could not decline request.',
+      });
       
       // Fallback: refresh pending requests
       await fetchPendingRequests();
@@ -153,7 +181,11 @@ const useFriendService = () => {
         }
       );
 
-      Alert.alert('Success', 'Friend request sent!');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Friend request sent!',
+      });
       
       // Remove the user from allProfiles since request was sent
       setAllProfiles((prev) => prev.filter((p) => p.userId !== friend_user_id));
@@ -161,7 +193,11 @@ const useFriendService = () => {
       return { success: true, message: 'Friend request sent!' };
     } catch (error) {
       console.error('Error sending request:', error);
-      Alert.alert('Error', 'Could not send request.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Could not send request.',
+      });
       return { success: false, error: error.message };
     }
   };

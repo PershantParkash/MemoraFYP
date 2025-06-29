@@ -15,6 +15,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { MyContext } from '../context/MyContext';
 import useCapsuleService from '../hooks/useCapsuleService';
 import { useNavigation } from '@react-navigation/native';
+import axiosInstance from '../api/axiosInstance';
 
 const CapsuleCreationScreen = () => {
   const { handleCreateCapsule } = useCapsuleService();
@@ -29,12 +30,49 @@ const CapsuleCreationScreen = () => {
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [fileUri, setFileUri] = useState(capsuleInfo?.fileUri || null);
   const [isLoading, setIsLoading] = useState(false);
+  const [friends, setFriends] = useState([]);
+  const [isCheckingFriends, setIsCheckingFriends] = useState(false);
 
   useEffect(() => {
     if (!fileUri) {
       console.warn('No photo provided!');
     }
   }, [fileUri]);
+
+  useEffect(() => {
+    if (capsuleType === 'Shared') {
+      checkFriends();
+    }
+  }, [capsuleType]);
+
+  const checkFriends = async () => {
+    setIsCheckingFriends(true);
+    const token = await AsyncStorage.getItem('authToken');
+    if (!token) {
+      setIsCheckingFriends(false);
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.get('/api/friends/user-friends', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = response.data;
+      if (data && data.friends) {
+        setFriends(data.friends);
+      } else {
+        setFriends([]);
+      }
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+      setFriends([]);
+    } finally {
+      setIsCheckingFriends(false);
+    }
+  };
 
   const showDatePicker = () => setDatePickerVisibility(true);
   const hideDatePicker = () => setDatePickerVisibility(false);
@@ -59,6 +97,10 @@ const CapsuleCreationScreen = () => {
     }
     if (!fileUri) {
       Alert.alert('Image Required', 'Please add a photo');
+      return false;
+    }
+    if (capsuleType === 'Shared' && friends.length === 0) {
+      Alert.alert('No Friends', 'You need to add friends before creating a shared capsule');
       return false;
     }
     return true;
@@ -91,6 +133,12 @@ const CapsuleCreationScreen = () => {
     }
   };
 
+  const isCreateButtonDisabled = () => {
+    return isLoading || 
+           isCheckingFriends || 
+           (capsuleType === 'Shared' && friends.length === 0);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Create a Time Capsule</Text>
@@ -106,7 +154,7 @@ const CapsuleCreationScreen = () => {
               key={type}
               style={[styles.toggleButton, capsuleType === type && styles.activeButton]}
               onPress={() => setCapsuleType(type)}
-              disabled={isLoading}
+              disabled={isLoading || isCheckingFriends}
             >
               <Text style={[styles.toggleButtonText, capsuleType === type && styles.activeButtonText]}>
                 {type}
@@ -114,11 +162,17 @@ const CapsuleCreationScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
+        {capsuleType === 'Shared' && isCheckingFriends && (
+          <Text style={styles.checkingText}>Checking friends...</Text>
+        )}
+        {capsuleType === 'Shared' && !isCheckingFriends && friends.length === 0 && (
+          <Text style={styles.noFriendsText}>No friends found. Add friends to create shared capsules.</Text>
+        )}
       </View>
 
       <View style={styles.datePickerContainer}>
         <Text style={styles.label}>Unlock Date</Text>
-        <TouchableOpacity onPress={showDatePicker} style={styles.button} disabled={isLoading}>
+        <TouchableOpacity onPress={showDatePicker} style={styles.button} disabled={isLoading || isCheckingFriends}>
           <Text style={styles.buttonText}>
             {unlockDate ? moment(unlockDate).format('YYYY-MM-DD') : 'Select Date'}
           </Text>
@@ -126,9 +180,9 @@ const CapsuleCreationScreen = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.button3, isLoading && styles.disabledButton]}
+        style={[styles.button3, isCreateButtonDisabled() && styles.disabledButton]}
         onPress={CreateCapsule}
-        disabled={isLoading}
+        disabled={isCreateButtonDisabled()}
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -178,6 +232,8 @@ const styles = StyleSheet.create({
   activeButton: { backgroundColor: '#6BAED6' },
   toggleButtonText: { fontSize: 16, color: '#333' },
   activeButtonText: { color: '#fff', fontWeight: 'bold' },
+  checkingText: { marginTop: 8, fontSize: 14, color: '#6BAED6', textAlign: 'center' },
+  noFriendsText: { marginTop: 8, fontSize: 14, color: '#ff6b6b', textAlign: 'center' },
   datePickerContainer: { width: '100%', marginBottom: 20 },
   button: {
     height: 50, backgroundColor: '#6BAED6', justifyContent: 'center',

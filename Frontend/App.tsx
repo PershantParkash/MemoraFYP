@@ -15,7 +15,7 @@ import SettingsScreen from './android/app/src/screens/SettingsScreen';
 import EditProfileScreen from './android/app/src/screens/EditProfileScreen'
 import CapsuleCreationScreen from './android/app/src/screens/CapsuleCreationScreen';
 import SendCapsulePage from './android/app/src/screens/SendCapsulePage';
-
+import Toast from 'react-native-toast-message';
 // Disable all warning notifications
 LogBox.ignoreAllLogs(true); // Add this line
 
@@ -49,6 +49,7 @@ export default function App() {
          
         </Stack.Navigator>
       </NavigationContainer>
+          <Toast />
       </MyProvider>
       </GestureHandlerRootView>
   );

@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
@@ -54,7 +54,11 @@ const useCapsuleService = () => {
       const token = await AsyncStorage.getItem('authToken');
 
       if (!token) {
-        Alert.alert('Authentication Error', 'Please log in again.');
+        Toast.show({
+          type: 'error',
+          text1: 'Authentication Error',
+          text2: 'Please log in again.',
+        });
         return;
       }
 
@@ -92,7 +96,11 @@ const useCapsuleService = () => {
           mediaType
         });
       } else {
-        Alert.alert('Media Error', 'No valid media file provided.');
+        Toast.show({
+          type: 'error',
+          text1: 'Media Error',
+          text2: 'No valid media file provided.',
+        });
         return;
       }
 
@@ -105,10 +113,11 @@ const useCapsuleService = () => {
       });
 
       const mediaTypeText = capsuleInfo.mediaType || 'media';
-      Alert.alert(
-        'Capsule Created', 
-        `Your time capsule with ${mediaTypeText} has been created successfully.`
-      );
+      Toast.show({
+        type: 'success',
+        text1: 'Capsule Created',
+        text2: `Your time capsule with ${mediaTypeText} has been created successfully.`,
+      });
 
       // Optional: Navigate to a success screen or back to main screen
       // navigation.navigate('Home');
@@ -130,7 +139,11 @@ const useCapsuleService = () => {
         message = 'Network error. Please check your connection.';
       }
       
-      Alert.alert('Error Creating Capsule', message);
+      Toast.show({
+        type: 'error',
+        text1: 'Error Creating Capsule',
+        text2: message,
+      });
       throw error;
     }
   };
