@@ -1,3 +1,4 @@
+
 # To learn more about how to use Nix to configure your environment
 # see: https://firebase.google.com/docs/studio/customize-workspace
 { pkgs, ... }: {
@@ -10,9 +11,30 @@
     # pkgs.go
     # pkgs.python311
     # pkgs.python311Packages.pip
-    # pkgs.nodejs_20
-    # pkgs.nodePackages.nodemon
+    pkgs.nodejs_20 # Assuming you want nodejs_20 as commented out before
+    pkgs.nodePackages.nodemon # Assuming you want nodemon as commented out before
   ];
+
+  # Define a development shell with necessary tools
+  # devShell = pkgs.mkShell {
+  #   buildInputs = [
+  #     pkgs.nodejs # Include nodejs here as well for the shell
+  #     pkgs.yarn # Or pkgs.npm, include your preferred package manager
+  #     pkgs.jdk # Include jdk for Android development
+  #     pkgs.watchman # Include watchman for better performance
+
+  #     # Android SDK with required packages
+  #     (pkgs.androidsdk.withPackages (p: [
+  #       "platform-tools"
+  #       "platforms;android-31" # Replace with your target Android version
+  #       "build-tools;31.0.0"  # Replace with your build tools version
+  #     ]))
+  #   ];
+
+  #   shellHook = ''
+  #     export ANDROID_SDK_ROOT=${(pkgs.androidsdk.withPackages (p: ["platform-tools"]))}/libexec/android-sdk
+  #   '';
+  # };
 
   # Sets environment variables in the workspace
   env = {};
