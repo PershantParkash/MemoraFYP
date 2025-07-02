@@ -10,7 +10,7 @@ services:
     volumes:
       - ./uploads:/app/uploads
     depends_on:
-      - mongo        # <-- Add this line
+      - mongo
     environment:
       MONGO_URI: mongodb://admin:password@mongo:27017/?authSource=admin
 
@@ -23,3 +23,5 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - ./mongo-data:/data/db
