@@ -11,7 +11,7 @@ import {
   SafeAreaView,
   ActivityIndicator
 } from 'react-native';
-// import { Ionicons } from '@expo/vector-icons'; // You can keep this if `react-native-vector-icons` is linked
+ 
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { MyContext } from '../../context/MyContext';
@@ -79,14 +79,14 @@ const ProfileScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* CARD */}
+        
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="person" size={20} color="#6BAED6" />
             <Text style={styles.cardTitle}>Personal Information</Text>
           </View>
 
-          {/* Contact */}
+         
           <View style={[styles.detailRow, styles.borderBottom]}>
             <View style={styles.labelContainer}>
               <Ionicons name="call-outline" size={18} color="#6BAED6" style={styles.itemIcon} />
@@ -95,7 +95,7 @@ const ProfileScreen = () => {
             <Text style={styles.detailValue}>{userDetails.contactNo}</Text>
           </View>
 
-          {/* CNIC */}
+          
           <View style={[styles.detailRow, styles.borderBottom]}>
             <View style={styles.labelContainer}>
               <Ionicons name="card-outline" size={18} color="#6BAED6" style={styles.itemIcon} />
@@ -104,7 +104,7 @@ const ProfileScreen = () => {
             <Text style={styles.detailValue}>{userDetails.cnic}</Text>
           </View>
 
-          {/* DOB */}
+         
           <View style={[styles.detailRow, styles.borderBottom]}>
             <View style={styles.labelContainer}>
               <Ionicons name="calendar-outline" size={18} color="#6BAED6" style={styles.itemIcon} />
@@ -119,7 +119,7 @@ const ProfileScreen = () => {
             </Text>
           </View>
 
-          {/* Gender */}
+         
           <View style={[styles.detailRow, styles.borderBottom]}>
             <View style={styles.labelContainer}>
               <Ionicons
@@ -135,7 +135,7 @@ const ProfileScreen = () => {
             </Text>
           </View>
 
-          {/* Address */}
+         
           <View style={styles.detailRow}>
             <View style={styles.labelContainer}>
               <Ionicons name="location-outline" size={18} color="#6BAED6" style={styles.itemIcon} />
@@ -145,7 +145,7 @@ const ProfileScreen = () => {
           </View>
         </View>
 
-        {/* ACTIONS */}
+        
         <View style={styles.actionsContainer}>
           <TouchableOpacity style={styles.editButton} onPress={goToEditProfile} activeOpacity={0.8}>
             <Ionicons name="create-outline" size={20} color="#FFFFFF" style={styles.buttonIcon} />

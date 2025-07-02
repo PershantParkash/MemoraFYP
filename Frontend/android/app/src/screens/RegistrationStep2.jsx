@@ -85,6 +85,14 @@ const RegistrationStep2 = () => {
   };
 
   const validateFields = () => {
+     if (!profilePic) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select your profile picture.',
+      });
+      return false;
+    }
     if (!cnic.trim()) {
       Toast.show({
         type: 'error',
@@ -170,10 +178,10 @@ const RegistrationStep2 = () => {
           text2: 'Your profile has been created successfully.',
         });
         
-        // Navigate after a short delay to allow user to see the success message
+        
         setTimeout(() => {
           navigation.navigate('Tab');
-        }, 1500);
+        }, 500);
       }
     } catch (error) {
       Toast.show({
@@ -323,7 +331,7 @@ const RegistrationStep2 = () => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Toast Component - Add this at the end of your component */}
+       
       <Toast />
     </View>
   );

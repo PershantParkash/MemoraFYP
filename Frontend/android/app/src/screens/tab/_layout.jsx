@@ -16,7 +16,7 @@ const Tab = createBottomTabNavigator();
 
 export default function TabLayout() {
   return (
-    <Tab.Navigator>
+    <Tab.Navigator initialRouteName="CameraScreen">
       <Tab.Screen
         name="friends"
         component={FriendsScreen}

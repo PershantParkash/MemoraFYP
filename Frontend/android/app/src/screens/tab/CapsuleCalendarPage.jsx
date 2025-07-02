@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
-import useCapsuleService from '../../hooks/useCapsuleService'; // Make sure alias is correctly set up
+import useCapsuleService from '../../hooks/useCapsuleService'; 
 
 const screenWidth = Dimensions.get('window').width;
 

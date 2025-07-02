@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -121,7 +122,16 @@ const CapsuleCreationScreen = () => {
 
       if (capsuleType === 'Personal') {
         await handleCreateCapsule({ title, description, unlockDate, capsuleType, fileUri });
+        Toast.show({
+          type: 'success',
+          text1: 'Capsule Created Successful!',
+          text2: 'Capsule Created Successful!',
+        });
+     
+        setTimeout(() => {
         navigation.navigate('Tab');
+      }, 500);
+
       } else if (capsuleType === 'Shared') {
         navigation.navigate('SendCapsulePage');
       }
@@ -134,9 +144,9 @@ const CapsuleCreationScreen = () => {
   };
 
   const isCreateButtonDisabled = () => {
-    return isLoading || 
-           isCheckingFriends || 
-           (capsuleType === 'Shared' && friends.length === 0);
+    return isLoading ||
+      isCheckingFriends ||
+      (capsuleType === 'Shared' && friends.length === 0);
   };
 
   return (

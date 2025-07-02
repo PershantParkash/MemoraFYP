@@ -12,7 +12,7 @@ import {
   SafeAreaView,
   Dimensions,
   Animated,
-  AppState, // Added AppState import
+  AppState, 
     BackHandler,
 } from 'react-native';
 import {
@@ -21,7 +21,7 @@ import {
   useCameraPermission,
   useMicrophonePermission,
 } from 'react-native-vision-camera';
-import {useNavigation, useFocusEffect} from '@react-navigation/native'; // Added useFocusEffect
+import {useNavigation, useFocusEffect} from '@react-navigation/native'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AudioRecord from 'react-native-audio-record';
@@ -130,9 +130,9 @@ export default function CameraScreen() {
             'Please stop the current recording before navigating away.',
             [{text: 'OK'}],
           );
-          return true; // Prevent default back action
+          return true; 
         }
-        return false; // Allow default back action
+        return false; 
       },
     );
 
@@ -146,13 +146,13 @@ export default function CameraScreen() {
       initializeAudioRecord();
     }, 500);
 
-    // Add AppState listener
+    
     const handleAppStateChange = nextAppState => {
       if (
         appStateRef.current.match(/active|foreground/) &&
         nextAppState === 'background'
       ) {
-        // App is going to background, stop any active recordings
+       
         handleAppGoingToBackground();
       }
       appStateRef.current = nextAppState;
@@ -176,11 +176,21 @@ useFocusEffect(
     };
   }, [])  
 );
+
+const hasMediaEnded = () => {
+  if (currentMedia?.type === 'video') {
+    return videoProgress >= videoDuration && videoDuration > 0;
+  }
+  if (currentMedia?.type === 'audio') {
+    return audioProgress >= audioDuration && audioDuration > 0;
+  }
+  return false;
+};
 useEffect(() => {
   const unsubscribe = navigation.addListener('blur', async () => {
-    // Screen lost focus (navigated away)
+   
     if (isRecording || isAudioRecording) {
-      // First stop the recording
+    
       if (isRecording) {
         await stopVideoRecording();
       }
@@ -188,7 +198,7 @@ useEffect(() => {
         await stopAudioRecording();
       }
       
-      // Then show the alert
+      
       setTimeout(() => {
         Alert.alert(
           'Recording Stopped',
@@ -205,7 +215,7 @@ useEffect(() => {
 
 useEffect(() => {
   if (isRecordingInProgress) {
-    // Prevent tab switching during recording
+   
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       e.preventDefault();
       Alert.alert(
@@ -219,7 +229,7 @@ useEffect(() => {
   }
 }, [navigation, isRecordingInProgress]);
 
-  // Function to handle app going to background
+  
   const handleAppGoingToBackground = async () => {
     if (isRecording) {
       console.log('App going to background, stopping video recording');
@@ -231,7 +241,7 @@ useEffect(() => {
     }
   };
 
-  // Function to handle screen unfocus (tab switching)
+ 
   const handleScreenUnfocus = async () => {
     if (isRecording) {
       console.log('Screen unfocused, stopping video recording');
@@ -410,7 +420,7 @@ useEffect(() => {
       } catch (error) {
         console.error('Error stopping video recording:', error);
         Alert.alert('Error', 'Failed to stop video recording properly');
-        // Force reset recording state even if stop fails
+        
         setIsRecording(false);
       }
     }
@@ -491,22 +501,36 @@ useEffect(() => {
   };
 
   const playVideo = () => {
-    setIsVideoPlaying(!isVideoPlaying);
-  };
+  if (!isVideoPlaying && videoProgress >= videoDuration && videoDuration > 0) {
+   
+    setVideoProgress(0);
+    if (videoRef.current) {
+      videoRef.current.seek(0);
+    }
+  }
+  setIsVideoPlaying(!isVideoPlaying);
+};
 
   const playAudio = () => {
-    if (!audioUri) return;
+  if (!audioUri) return;
 
-    if (!Video) {
-      Alert.alert(
-        'Audio Preview',
-        'Audio recorded successfully! Video library required for preview.',
-      );
-      return;
+  if (!Video) {
+    Alert.alert(
+      'Audio Preview',
+      'Audio recorded successfully! Video library required for preview.',
+    );
+    return;
+  }
+
+  if (!isAudioPlaying && audioProgress >= audioDuration && audioDuration > 0) {
+    
+    setAudioProgress(0);
+    if (audioRef.current) {
+      audioRef.current.seek(0);
     }
-
-    setIsAudioPlaying(!isAudioPlaying);
-  };
+  }
+  setIsAudioPlaying(!isAudioPlaying);
+};
 
   const toggleCameraFacing = () => {
     setCameraPosition(prev => (prev === 'back' ? 'front' : 'back'));
@@ -640,7 +664,7 @@ useEffect(() => {
               <TouchableOpacity
                 style={[
                   styles.topButton,
-                  isRecordingInProgress && styles.disabledButton, // Add this line
+                  isRecordingInProgress && styles.disabledButton, 
                 ]}
                 onPress={() => {
                   if (isRecordingInProgress) {
@@ -653,7 +677,7 @@ useEffect(() => {
                   }
                   SettingsScreen();
                 }}
-                disabled={isRecordingInProgress} // Add this line
+                disabled={isRecordingInProgress} 
               >
                 <MaterialIcons
                   name="settings"
@@ -665,7 +689,7 @@ useEffect(() => {
               </TouchableOpacity>
             </View>
 
-            {/* Recording Indicator */}
+           
             {(isRecording || isAudioRecording) && (
               <Animated.View
                 style={[
@@ -689,7 +713,7 @@ useEffect(() => {
                   currentMode === mode && styles.activeModeButton,
                   isRecordingInProgress &&
                     currentMode !== mode &&
-                    styles.disabledModeButton, // Add this line
+                    styles.disabledModeButton, 
                 ]}
                 onPress={() => {
                   if (isRecordingInProgress) {
@@ -702,7 +726,7 @@ useEffect(() => {
                   }
                   setCurrentMode(mode);
                 }}
-                disabled={isRecordingInProgress && currentMode !== mode} // Add this line
+                disabled={isRecordingInProgress && currentMode !== mode} 
               >
                 <MaterialIcons
                   name={
@@ -727,7 +751,7 @@ useEffect(() => {
                     currentMode === mode && styles.activeModeText,
                     isRecordingInProgress &&
                       currentMode !== mode &&
-                      styles.disabledModeText, // Add this line
+                      styles.disabledModeText, 
                   ]}>
                   {mode.toUpperCase()}
                 </Text>
@@ -808,35 +832,40 @@ useEffect(() => {
             <View style={styles.videoContainer}>
               {Video ? (
                 <>
-                  <Video
-                    ref={videoRef}
-                    source={{uri: currentMedia.uri}}
-                    style={styles.fullScreenMedia}
-                    paused={!isVideoPlaying}
-                    resizeMode="cover"
-                    onLoad={data => {
-                      setVideoDuration(data.duration);
-                    }}
-                    onProgress={data => {
-                      setVideoProgress(data.currentTime);
-                    }}
-                    onEnd={() => {
-                      setIsVideoPlaying(false);
-                      setVideoProgress(0);
-                    }}
-                  />
+                <Video
+  ref={videoRef}
+  source={{uri: currentMedia.uri}}
+  style={styles.fullScreenMedia}
+  paused={!isVideoPlaying}
+  resizeMode="cover"
+  onLoad={data => {
+    setVideoDuration(data.duration);
+  }}
+  onProgress={data => {
+    setVideoProgress(data.currentTime);
+  }}
+  onEnd={() => {
+    setIsVideoPlaying(false);
+  }}
+/>
 
-                  <TouchableOpacity
-                    style={styles.videoOverlay}
-                    onPress={playVideo}>
-                    <View style={styles.videoControls}>
-                      <MaterialIcons
-                        name={isVideoPlaying ? 'pause' : 'play-arrow'}
-                        size={80}
-                        color="rgba(255,255,255,0.9)"
-                      />
-                    </View>
-                  </TouchableOpacity>
+                 <TouchableOpacity
+  style={styles.videoOverlay}
+  onPress={playVideo}>
+  <View style={styles.videoControls}>
+    <MaterialIcons
+      name={
+        hasMediaEnded() && currentMedia?.type === 'video' 
+          ? 'replay' 
+          : isVideoPlaying 
+            ? 'pause' 
+            : 'play-arrow'
+      }
+      size={80}
+      color="rgba(255,255,255,0.9)"
+    />
+  </View>
+</TouchableOpacity>
 
                   <View style={styles.progressContainer}>
                     <View style={styles.progressBar}>
@@ -875,26 +904,26 @@ useEffect(() => {
               style={styles.audioPreview}>
               {Video && audioUri && (
                 <Video
-                  ref={audioRef}
-                  source={{uri: audioUri}}
-                  style={{width: 0, height: 0}}
-                  paused={!isAudioPlaying}
-                  onLoad={data => {
-                    setAudioDuration(data.duration);
-                  }}
-                  onProgress={data => {
-                    setAudioProgress(data.currentTime);
-                  }}
-                  onEnd={() => {
-                    setIsAudioPlaying(false);
-                    setAudioProgress(0);
-                  }}
-                  onError={error => {
-                    console.log('Audio playback error:', error);
-                    Alert.alert('Audio Error', 'Unable to play audio');
-                    setIsAudioPlaying(false);
-                  }}
-                />
+  ref={audioRef}
+  source={{uri: audioUri}}
+  style={{width: 0, height: 0}}
+  paused={!isAudioPlaying}
+  onLoad={data => {
+    setAudioDuration(data.duration);
+  }}
+  onProgress={data => {
+    setAudioProgress(data.currentTime);
+  }}
+  onEnd={() => {
+    setIsAudioPlaying(false);
+   
+  }}
+  onError={error => {
+    console.log('Audio playback error:', error);
+    Alert.alert('Audio Error', 'Unable to play audio');
+    setIsAudioPlaying(false);
+  }}
+/>
               )}
 
               <View style={styles.audioVisualization}>
@@ -934,15 +963,21 @@ useEffect(() => {
                   </Text>
                 )}
 
-                <TouchableOpacity
-                  style={styles.audioPlayButton}
-                  onPress={playAudio}>
-                  <MaterialIcons
-                    name={isAudioPlaying ? 'pause' : 'play-arrow'}
-                    size={50}
-                    color="white"
-                  />
-                </TouchableOpacity>
+               <TouchableOpacity
+  style={styles.audioPlayButton}
+  onPress={playAudio}>
+  <MaterialIcons
+    name={
+      hasMediaEnded() && currentMedia?.type === 'audio'
+        ? 'replay'
+        : isAudioPlaying
+          ? 'pause'
+          : 'play-arrow'
+    }
+    size={50}
+    color="white"
+  />
+</TouchableOpacity>
 
                 {audioDuration > 0 && (
                   <View style={styles.audioProgressContainer}>
@@ -971,7 +1006,7 @@ useEffect(() => {
             </GradientComponent>
           )}
 
-          {/* Preview Controls */}
+          
           <GradientComponent
             colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']}
             style={styles.previewControls}>
@@ -1308,7 +1343,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Preview Controls
+ 
   previewControls: {
     position: 'absolute',
     bottom: 0,

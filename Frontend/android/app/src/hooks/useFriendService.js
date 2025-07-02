@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axiosInstance from '../api/axiosInstance'; // Adjust the path as needed
+import axiosInstance from '../api/axiosInstance'; 
 
 const useFriendService = () => {
   const [allProfiles, setAllProfiles] = useState([]);
@@ -9,7 +9,7 @@ const useFriendService = () => {
   const [pendingRequestsProfile, setPendingRequestsProfile] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Get auth token helper function
+  
   const getAuthToken = async () => {
     try {
       const storedToken = await AsyncStorage.getItem('authToken');
@@ -28,7 +28,7 @@ const useFriendService = () => {
     }
   };
 
-  // Fetch all profiles for "Find Friends" section
+  
   const fetchAllProfiles = async () => {
     try {
       const token = await getAuthToken();
@@ -56,7 +56,7 @@ const useFriendService = () => {
     }
   };
 
-  // Fetch pending friend requests
+  
   const fetchPendingRequests = async () => {
     try {
       const token = await getAuthToken();
@@ -81,7 +81,7 @@ const useFriendService = () => {
     }
   };
 
-  // Accept friend request
+  
   const handleAcceptRequest = async (friendshipId) => {
     try {
       const token = await getAuthToken();
@@ -104,7 +104,7 @@ const useFriendService = () => {
         text2: data.message || 'Friend request accepted!',
       });
       
-      // Update state to remove the accepted request
+     
       setPendingRequests((prev) => prev.filter((r) => r.userId !== friendshipId));
       setPendingRequestsProfile((prev) => prev.filter((p) => p.userId !== friendshipId));
       
@@ -117,13 +117,13 @@ const useFriendService = () => {
         text2: 'Could not accept request.',
       });
       
-      // Fallback: refresh pending requests
+      
       await fetchPendingRequests();
       return { success: false, error: error.message };
     }
   };
 
-  // Decline friend request
+ 
   const handleDeclineRequest = async (friendshipId) => {
     try {
       const token = await getAuthToken();
@@ -146,7 +146,7 @@ const useFriendService = () => {
         text2: data.message || 'Friend request declined!',
       });
       
-      // Update state to remove the declined request
+      
       setPendingRequests((prev) => prev.filter((r) => r.userId !== friendshipId));
       setPendingRequestsProfile((prev) => prev.filter((p) => p.userId !== friendshipId));
       
@@ -159,13 +159,13 @@ const useFriendService = () => {
         text2: 'Could not decline request.',
       });
       
-      // Fallback: refresh pending requests
+      
       await fetchPendingRequests();
       return { success: false, error: error.message };
     }
   };
 
-  // Send friend request
+
   const sendFriendRequest = async (friend_user_id) => {
     try {
       const token = await getAuthToken();
@@ -186,8 +186,7 @@ const useFriendService = () => {
         text1: 'Success',
         text2: 'Friend request sent!',
       });
-      
-      // Remove the user from allProfiles since request was sent
+     
       setAllProfiles((prev) => prev.filter((p) => p.userId !== friend_user_id));
       
       return { success: true, message: 'Friend request sent!' };
@@ -202,7 +201,7 @@ const useFriendService = () => {
     }
   };
 
-  // Refresh all data
+ 
   const refreshData = async () => {
     setIsLoading(true);
     await fetchPendingRequests();
@@ -210,12 +209,12 @@ const useFriendService = () => {
     setIsLoading(false);
   };
 
-  // Load initial data on hook mount
+  
   useEffect(() => {
     refreshData();
   }, []);
 
-  // Update allProfiles when pendingRequests changes
+
   useEffect(() => {
     if (pendingRequests.length > 0) {
       fetchAllProfiles();
@@ -223,13 +222,13 @@ const useFriendService = () => {
   }, [pendingRequests]);
 
   return {
-    // State
+   
     allProfiles,
     pendingRequests,
     pendingRequestsProfile,
     isLoading,
     
-    // Functions
+   
     fetchAllProfiles,
     fetchPendingRequests,
     handleAcceptRequest,
@@ -237,7 +236,7 @@ const useFriendService = () => {
     sendFriendRequest,
     refreshData,
     
-    // Setters (if needed for manual state updates)
+   
     setAllProfiles,
     setPendingRequests,
     setPendingRequestsProfile,

@@ -25,7 +25,7 @@ const useAuthService = () => {
         message: 'Login successful'
       };
     } catch (error) {
-      const message = error.response?.data?.message || 'Invalid Credentials';
+      const message = error.response?.data?.message || 'An unexpected error occurred. Please try again.';
       
       return {
         success: false,

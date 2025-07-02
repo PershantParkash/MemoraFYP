@@ -89,7 +89,7 @@ const CapsulePage = () => {
     fetchCapsules();
   }, []);
 
-  // Wave animation for audio playback
+
   useEffect(() => {
     if (isAudioPlaying) {
       Animated.loop(
@@ -111,13 +111,13 @@ const CapsulePage = () => {
     }
   }, [isAudioPlaying]);
 
-  // Get file extension to determine media type
+   
   const getFileExtension = (filename) => {
     if (!filename) return '';
     return filename.split('.').pop().toLowerCase();
   };
 
-  // Get media type based on file extension
+ 
   const getMediaType = (filename) => {
     const extension = getFileExtension(filename);
     switch (extension) {
@@ -139,19 +139,18 @@ const CapsulePage = () => {
     }
   };
 
-  // Format time display
+ 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  // Handle video playback
+ 
   const toggleVideoPlayback = () => {
     setIsVideoPlaying(!isVideoPlaying);
   };
 
-  // Handle audio playback
+   
   const toggleAudioPlayback = () => {
     if (!Video) {
       console.log('Video library not available for audio playback');
@@ -160,7 +159,7 @@ const CapsulePage = () => {
     setIsAudioPlaying(!isAudioPlaying);
   };
 
-  // Render media based on type
+   
   const renderMediaContent = (mediaFile) => {
     const mediaType = getMediaType(mediaFile);
     const mediaUrl = `${Config.API_BASE_URL}/uploads/${mediaFile}`;
@@ -365,7 +364,7 @@ const CapsulePage = () => {
 
       <Text style={styles.description}>{item.Description}</Text>
 
-      {/* Display media type icon */}
+      
       {item.Media && (
         <View style={styles.mediaTypeContainer}>
           <MaterialIcons
@@ -442,6 +441,14 @@ const CapsulePage = () => {
         </View>
       );
     }
+
+
+// <FlatList
+//   data={capsules.sort((a, b) => new Date(b.unlockDate) - new Date(a.unlockDate))}
+//   keyExtractor={(item) => item._id}
+//   renderItem={renderCapsule}
+//   contentContainerStyle={styles.listContainer}
+// />
 
     return (
       <FlatList
@@ -578,7 +585,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   
-  // Video styles
+  
   videoContainer: {
     flex: 1,
     position: 'relative',
@@ -602,7 +609,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   
-  // Audio styles
+ 
   audioContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -644,7 +651,7 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   
-  // Progress styles
+   
   progressContainer: {
     position: 'absolute',
     bottom: 100,
@@ -670,7 +677,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   
-  // Fallback styles
+   
   mediaFallback: {
     flex: 1,
     justifyContent: 'center',
@@ -725,7 +732,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   
-  // Loading state styles
+ 
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -738,8 +745,7 @@ const styles = StyleSheet.create({
     color: '#555',
     textAlign: 'center',
   },
-  
-  // Error state styles
+   
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -760,7 +766,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   
-  // Empty state styles
+   
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',

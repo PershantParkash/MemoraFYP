@@ -160,7 +160,7 @@ const EditProfileScreen = () => {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Profile Picture Section */}
+      
       <View style={styles.profileSection}>
         <TouchableOpacity
           style={styles.profilePicContainer}
@@ -182,7 +182,7 @@ const EditProfileScreen = () => {
         <Text style={styles.profileHint}>Tap to change photo</Text>
       </View>
 
-      {/* Form Section */}
+      
       <View style={styles.formSection}>
         <InputField
           label="Username"
@@ -274,7 +274,7 @@ const EditProfileScreen = () => {
         />
       </View>
 
-      {/* Save Button */}
+     
       <View style={styles.buttonSection}>
         <TouchableOpacity
           style={[styles.saveButton, isSubmitting && styles.disabledButton]}
@@ -289,7 +289,7 @@ const EditProfileScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Toast Component */}
+      
       <Toast />
     </ScrollView>
   );

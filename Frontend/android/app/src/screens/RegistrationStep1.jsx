@@ -43,20 +43,16 @@ const RegistrationStep1 = () => {
       return false;
     }
 
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|szabist\.pk|hotmail\.com|abc\.edu)$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|szabist\.pk|hotmail\.com)$/;
 
-if (!emailRegex.test(email)) {
-  Toast.show({
-    type: 'error',
-    text1: 'Validation Error',
-    text2: 'Only selected domains are allowed: Gmail, Yahoo, Hotmail, ABC, or Szabist.',
-  });
-  return false;
-}
-
-
-
-
+    if (!emailRegex.test(email)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Only selected domains are allowed: Gmail, Yahoo, Hotmail, or szabist.pk.',
+      });
+      return false;
+    }
     if (!password) {
       Toast.show({
         type: 'error',
@@ -106,18 +102,18 @@ if (!emailRegex.test(email)) {
       text2: 'Proceeding to Step 2...',
     });
 
-   
+
     setTimeout(() => {
       navigation.navigate('RegistrationStep2', { fullName, email, password });
-    }, 1500);
+    }, 500);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Image 
+        <Image
           source={require('../assets/images/logo.png')}
-          style={styles.logo} 
+          style={styles.logo}
         />
         <Text style={styles.tagline}>Begin Your Memory Journey</Text>
       </View>

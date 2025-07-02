@@ -69,13 +69,7 @@ const SendCapsulePage = () => {
         );
         setFriends(friendsData);
         
-        if (friendsData.length > 0) {
-          Toast.show({
-            type: 'success',
-            text1: 'Friends Loaded',
-            text2: `Found ${friendsData.length} friend${friendsData.length > 1 ? 's' : ''} to share with!`,
-          });
-        }
+       
       }
     } catch (error) {
       console.error('Error fetching friends:', error);
@@ -112,13 +106,7 @@ const SendCapsulePage = () => {
       
       // Show a subtle feedback when friend is selected
       const selectedFriend = friends.find(friend => friend._id === friendId);
-      if (selectedFriend) {
-        Toast.show({
-          type: 'info',
-          text1: 'Friend Selected',
-          text2: `${selectedFriend.username} added to recipients`,
-        });
-      }
+     
     }
   };
 
@@ -149,10 +137,9 @@ const SendCapsulePage = () => {
         text2: `Successfully sent to ${selectedFriends.length} friend${selectedFriends.length > 1 ? 's' : ''}`,
       });
       
-      // Navigate after a short delay to allow user to see the success message
       setTimeout(() => {
         navigation.navigate('Tab');
-      }, 1500);
+      }, 500);
     } catch (error) {
       console.error('Error sending capsule:', error);
       Toast.show({
@@ -230,7 +217,7 @@ const SendCapsulePage = () => {
         )}
       </TouchableOpacity>
 
-      {/* Toast Component */}
+       
       <Toast />
     </View>
   );

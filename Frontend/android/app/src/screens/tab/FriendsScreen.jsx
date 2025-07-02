@@ -203,7 +203,7 @@ const FriendsScreen = () => {
         )}
       </ScrollView>
 
-      {/* Toast Component */}
+     
       <Toast />
     </View>
   );

@@ -45,6 +45,16 @@ const LoginScreen = () => {
       });
       return;
     }
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|szabist\.pk|hotmail\.com)$/;
+
+    if (!emailRegex.test(email)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Only selected domains are allowed: Gmail, Yahoo, Hotmail, or szabist.pk.',
+      });
+      return;
+    }
     if (!password) {
       Toast.show({
         type: 'error',
@@ -59,14 +69,15 @@ const LoginScreen = () => {
 
       if (result.success) {
         await AsyncStorage.setItem('authToken', result.token);
-
-        navigation.navigate('Tab');
-
         Toast.show({
           type: 'success',
           text1: 'Login Successful!',
           text2: 'Welcome back to MemoryCapsule!',
         });
+
+        setTimeout(() => {
+        navigation.navigate('Tab');
+      }, 500);
 
       } else {
         Toast.show({
@@ -156,7 +167,7 @@ const LoginScreen = () => {
           onPress={() => {
             navigation.navigate('RegistrationStep1');
           }}
-        // onPress={() => {navigation.navigate('SettingsScreen');}}
+         
         >
           <Text style={styles.signupButtonText}>Create New Account</Text>
         </TouchableOpacity>

@@ -13,29 +13,29 @@ const useCapsuleService = () => {
     const fileName = fileUri.split('/').pop();
     const fileExtension = fileName.split('.').pop().toLowerCase();
 
-    // Determine MIME type based on media type and extension
+   
     switch (mediaType) {
       case 'photo':
         if (['jpg', 'jpeg'].includes(fileExtension)) return 'image/jpeg';
         if (fileExtension === 'png') return 'image/png';
         if (fileExtension === 'gif') return 'image/gif';
-        return 'image/jpeg'; // default for photos
+        return 'image/jpeg'; 
         
       case 'video':
         if (fileExtension === 'mp4') return 'video/mp4';
         if (fileExtension === 'mov') return 'video/quicktime';
         if (fileExtension === 'avi') return 'video/avi';
-        return 'video/mp4'; // default for videos
+        return 'video/mp4'; 
         
       case 'audio':
         if (fileExtension === 'aac') return 'audio/aac';
         if (fileExtension === 'm4a') return 'audio/m4a';
         if (fileExtension === 'mp3') return 'audio/mpeg';
         if (fileExtension === 'wav') return 'audio/wav';
-        return 'audio/aac'; // default for audio
+        return 'audio/aac'; 
         
       default:
-        // Fallback: try to determine from extension
+        
         if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
           return `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`;
         }
@@ -68,7 +68,7 @@ const useCapsuleService = () => {
       formData.append('unlockDate', moment(capsuleInfo.unlockDate).format('YYYY-M-D'));
       formData.append('capsuleType', capsuleInfo.capsuleType);
 
-      // Add media type to help backend process the file correctly
+      
       if (capsuleInfo.mediaType) {
         formData.append('mediaType', capsuleInfo.mediaType);
       }
@@ -81,7 +81,7 @@ const useCapsuleService = () => {
 
       if (capsuleInfo.fileUri) {
         const fileName = capsuleInfo.fileUri.split('/').pop();
-        const mediaType = capsuleInfo.mediaType || 'photo'; // fallback to photo
+        const mediaType = capsuleInfo.mediaType || 'photo'; 
         const fileType = getFileType(capsuleInfo.fileUri, mediaType);
         
         formData.append('file', {
@@ -95,6 +95,8 @@ const useCapsuleService = () => {
           fileType,
           mediaType
         });
+        
+
       } else {
         Toast.show({
           type: 'error',
@@ -109,7 +111,7 @@ const useCapsuleService = () => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 30000, // 30 second timeout for large files
+        timeout: 30000, 
       });
 
       const mediaTypeText = capsuleInfo.mediaType || 'media';
@@ -119,8 +121,7 @@ const useCapsuleService = () => {
         text2: `Your time capsule with ${mediaTypeText} has been created successfully.`,
       });
 
-      // Optional: Navigate to a success screen or back to main screen
-      // navigation.navigate('Home');
+     
 
       return response.data;
 
@@ -132,10 +133,10 @@ const useCapsuleService = () => {
       if (error.code === 'ECONNABORTED') {
         message = 'Upload timeout. Please check your connection and try again.';
       } else if (error.response) {
-        // Server responded with error
+       
         message = error.response.data?.message || `Server error: ${error.response.status}`;
       } else if (error.request) {
-        // Network error
+       
         message = 'Network error. Please check your connection.';
       }
       
