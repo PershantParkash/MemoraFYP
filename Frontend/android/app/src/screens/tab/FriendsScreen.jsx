@@ -13,9 +13,23 @@ import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import useFriendService from '../../hooks/useFriendService'; 
 import Config from 'react-native-config';
+import useBackButtonHandler from '../../hooks/useBackButtonHandler';
+import { useNavigationContext } from '../../context/NavigationContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const FriendsScreen = () => {
   const navigation = useNavigation();
+  const { addToHistory } = useNavigationContext();
+  
+  // Use custom back button handler
+  useBackButtonHandler();
+  
+  // Track navigation history
+  useFocusEffect(
+    React.useCallback(() => {
+      addToHistory('friends');
+    }, [addToHistory])
+  );
   
   const {
     allProfiles,

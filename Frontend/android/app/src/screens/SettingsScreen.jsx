@@ -14,11 +14,14 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import useAuthService from '../hooks/useAuthService';
+import Toast from 'react-native-toast-message';
 
 const { width } = Dimensions.get('window');
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
+  const { logoutUser } = useAuthService();
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -30,12 +33,52 @@ const SettingsScreen = () => {
   const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
 
   const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem('authToken');
-      navigation.navigate('Index'); // Make sure your login screen is named 'Login'
-    } catch (error) {
-      console.error('Error during logout:', error);
-    }
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout? You will need to enter your password again to login.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await logoutUser();
+              
+              if (result.success) {
+                Toast.show({
+                  type: 'success',
+                  text1: 'Logged Out',
+                  text2: 'You have been successfully logged out.',
+                });
+                
+                // Navigate to login screen
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Index' }],
+                });
+              } else {
+                Toast.show({
+                  type: 'error',
+                  text1: 'Logout Error',
+                  text2: result.message,
+                });
+              }
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Toast.show({
+                type: 'error',
+                text1: 'Logout Error',
+                text2: 'An error occurred during logout.',
+              });
+            }
+          }
+        }
+      ]
+    );
   };
 
   const goToEditProfile = () => {

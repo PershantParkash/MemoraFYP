@@ -13,8 +13,9 @@ import {
   Dimensions,
   Animated,
   AppState, 
-    BackHandler,
+  BackHandler,
 } from 'react-native';
+import useBackButtonHandler from '../../hooks/useBackButtonHandler';
 import {
   Camera,
   useCameraDevices,
@@ -26,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AudioRecord from 'react-native-audio-record';
 import {MyContext} from '../../context/MyContext';
+import { useNavigationContext } from '../../context/NavigationContext';
 
 let Video = null;
 let LinearGradient = null;
@@ -74,6 +76,7 @@ export default function CameraScreen() {
   const context = useContext(MyContext);
   const {capsuleInfo, setCapsuleInfo} = context;
   const navigation = useNavigation();
+  const { addToHistory } = useNavigationContext();
   const [isRecordingInProgress, setIsRecordingInProgress] = useState(false);
   const devices = useCameraDevices();
   const [cameraPosition, setCameraPosition] = useState('back');
@@ -120,24 +123,27 @@ export default function CameraScreen() {
     setIsRecordingInProgress(isRecording || isAudioRecording);
   }, [isRecording, isAudioRecording]);
 
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      () => {
+  // Use custom back button handler, but override for recording in progress
+  useBackButtonHandler();
+  
+  // Override back button behavior when recording is in progress
+  useFocusEffect(
+    React.useCallback(() => {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
         if (isRecordingInProgress) {
           Alert.alert(
             'Recording in Progress',
             'Please stop the current recording before navigating away.',
             [{text: 'OK'}],
           );
-          return true; 
+          return true; // Prevent default back behavior
         }
-        return false; 
-      },
-    );
+        return false; // Allow default back behavior (handled by useBackButtonHandler)
+      });
 
-    return () => backHandler.remove();
-  }, [isRecordingInProgress]);
+      return () => backHandler.remove();
+    }, [isRecordingInProgress])
+  );
 
   useEffect(() => {
     requestPermissions();
@@ -171,10 +177,13 @@ export default function CameraScreen() {
 
 useFocusEffect(
   React.useCallback(() => {
+    // Add to navigation history when screen comes into focus
+    addToHistory('CameraScreen');
+    
     return () => {
       handleScreenUnfocus(); 
     };
-  }, [])  
+  }, [addToHistory])  
 );
 
 const hasMediaEnded = () => {

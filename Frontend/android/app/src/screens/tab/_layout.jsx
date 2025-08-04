@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text } from 'react-native';
 // Replace Expo vector icons with react-native-vector-icons
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigationContext } from '../../context/NavigationContext';
 
 import CameraScreen from './CameraScreen';
 import FriendsScreen from './FriendsScreen';
@@ -15,8 +16,17 @@ import capsuleCalendar from './CapsuleCalendarPage';
 const Tab = createBottomTabNavigator();
 
 export default function TabLayout() {
+  const { initializeHistory } = useNavigationContext();
+
+  useEffect(() => {
+    // Initialize navigation history when Tab layout mounts
+    initializeHistory();
+  }, [initializeHistory]);
+
   return (
-    <Tab.Navigator initialRouteName="CameraScreen">
+    <Tab.Navigator 
+      initialRouteName="CameraScreen"
+    >
       <Tab.Screen
         name="friends"
         component={FriendsScreen}

@@ -1,5 +1,7 @@
 import { Alert } from 'react-native';
-import axiosInstance from '../api/axiosInstance'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axiosInstance from '../api/axiosInstance';
+import SessionManager from '../utils/sessionManager';
 
 const useAuthService = () => {
 
@@ -32,6 +34,70 @@ const useAuthService = () => {
         message,
         error
       };
+    }
+  };
+
+  const logoutUser = async () => {
+    try {
+      const success = await SessionManager.clearSession();
+      
+      return {
+        success,
+        message: success ? 'Logout successful' : 'Error during logout'
+      };
+    } catch (error) {
+      console.error('Error during logout:', error);
+      return {
+        success: false,
+        message: 'Error during logout',
+        error
+      };
+    }
+  };
+
+  const checkSessionStatus = async () => {
+    try {
+      const sessionStatus = await SessionManager.isSessionValid();
+      
+      if (!sessionStatus.valid) {
+        if (sessionStatus.reason === 'expired') {
+          return { isLoggedIn: false, sessionExpired: true };
+        }
+        return { isLoggedIn: false };
+      }
+
+      return { isLoggedIn: true };
+    } catch (error) {
+      console.error('Error checking session status:', error);
+      return { isLoggedIn: false };
+    }
+  };
+
+  const saveLoginSession = async (token, email, userData = null) => {
+    try {
+      const success = await SessionManager.saveSession(token, email, userData);
+      return success;
+    } catch (error) {
+      console.error('Error saving login session:', error);
+      return false;
+    }
+  };
+
+  const getCurrentSession = async () => {
+    try {
+      return await SessionManager.getSessionData();
+    } catch (error) {
+      console.error('Error getting current session:', error);
+      return null;
+    }
+  };
+
+  const forceLogout = async () => {
+    try {
+      return await SessionManager.forceLogout();
+    } catch (error) {
+      console.error('Error during force logout:', error);
+      return false;
     }
   };
 
@@ -90,7 +156,16 @@ const createProfile = async (token, userData) => {
     }
 };
 
-  return { loginUser, registerUser, createProfile };
+  return { 
+    loginUser, 
+    registerUser, 
+    createProfile, 
+    logoutUser, 
+    checkSessionStatus, 
+    saveLoginSession,
+    getCurrentSession,
+    forceLogout
+  };
 };
 
 export default useAuthService;

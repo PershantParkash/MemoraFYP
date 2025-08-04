@@ -13,7 +13,10 @@ import Toast from 'react-native-toast-message';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import useAuthService from '../../src/hooks/useAuthService';
+import useBackButtonHandler from '../hooks/useBackButtonHandler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigationContext } from '../context/NavigationContext';
+import { useFocusEffect } from '@react-navigation/native';
 const { height } = Dimensions.get('window');
 
 const LoginScreen = () => {
@@ -22,7 +25,18 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
-  const { loginUser } = useAuthService();
+  const { loginUser, saveLoginSession } = useAuthService();
+  const { addToHistory } = useNavigationContext();
+  
+  // Use custom back button handler
+  useBackButtonHandler();
+  
+  // Track navigation history
+  useFocusEffect(
+    React.useCallback(() => {
+      addToHistory('Index');
+    }, [addToHistory])
+  );
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -68,7 +82,9 @@ const LoginScreen = () => {
       const result = await loginUser(email, password);
 
       if (result.success) {
-        await AsyncStorage.setItem('authToken', result.token);
+        // Save complete session data
+        await saveLoginSession(result.token, email);
+        
         Toast.show({
           type: 'success',
           text1: 'Login Successful!',

@@ -5,7 +5,10 @@ import { useNavigation } from '@react-navigation/native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
-import useCapsuleService from '../../hooks/useCapsuleService'; 
+import useCapsuleService from '../../hooks/useCapsuleService';
+import useBackButtonHandler from '../../hooks/useBackButtonHandler';
+import { useNavigationContext } from '../../context/NavigationContext';
+import { useFocusEffect } from '@react-navigation/native'; 
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -17,6 +20,17 @@ const CapsuleCalendarPage = () => {
   const { getUserCapsules } = useCapsuleService();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { addToHistory } = useNavigationContext();
+  
+  // Use custom back button handler
+  useBackButtonHandler();
+  
+  // Track navigation history
+  useFocusEffect(
+    React.useCallback(() => {
+      addToHistory('Calendar');
+    }, [addToHistory])
+  );
 
   useEffect(() => {
     const fetchCapsules = async () => {

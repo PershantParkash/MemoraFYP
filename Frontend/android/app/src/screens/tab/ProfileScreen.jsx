@@ -16,7 +16,10 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { MyContext } from '../../context/MyContext';
 import useProfileService from '../../hooks/useProfileService';
+import useBackButtonHandler from '../../hooks/useBackButtonHandler';
 import Config from 'react-native-config';
+import { useNavigationContext } from '../../context/NavigationContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +29,17 @@ const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
   const context = useContext(MyContext);
   const { userDetails, setUserDetails } = context;
+  const { addToHistory } = useNavigationContext();
+  
+  // Use custom back button handler
+  useBackButtonHandler();
+  
+  // Track navigation history
+  useFocusEffect(
+    React.useCallback(() => {
+      addToHistory('profile');
+    }, [addToHistory])
+  );
 
   const goToEditProfile = () => {
     navigation.navigate('EditProfileScreen');

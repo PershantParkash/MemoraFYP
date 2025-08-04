@@ -15,6 +15,10 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import moment from 'moment';
 import useCapsuleService from '../../hooks/useCapsuleService'
+import useBackButtonHandler from '../../hooks/useBackButtonHandler';
+import { Picker } from '@react-native-picker/picker';
+import { useNavigationContext } from '../../context/NavigationContext';
+import { useFocusEffect } from '@react-navigation/native';
 let Video = null;
 let LinearGradient = null;
 
@@ -56,6 +60,17 @@ const CapsulePage = () => {
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { addToHistory } = useNavigationContext();
+  
+  // Use custom back button handler
+  useBackButtonHandler();
+  
+  // Track navigation history
+  useFocusEffect(
+    React.useCallback(() => {
+      addToHistory('HomeCapsule');
+    }, [addToHistory])
+  );
   
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -63,6 +78,7 @@ const CapsulePage = () => {
   const [videoDuration, setVideoDuration] = useState(0);
   const [audioProgress, setAudioProgress] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
 
   const waveAnimation = useRef(new Animated.Value(1)).current;
 
@@ -442,17 +458,16 @@ const CapsulePage = () => {
       );
     }
 
-
-// <FlatList
-//   data={capsules.sort((a, b) => new Date(b.unlockDate) - new Date(a.unlockDate))}
-//   keyExtractor={(item) => item._id}
-//   renderItem={renderCapsule}
-//   contentContainerStyle={styles.listContainer}
-// />
-
+    // 
+    const sortedCapsules = [...capsules].sort((a, b) => {
+      const dateA = new Date(a.UnlockDate);
+      const dateB = new Date(b.UnlockDate);
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+ 
     return (
       <FlatList
-        data={capsules}
+        data={sortedCapsules}
         keyExtractor={(item) => item._id}
         renderItem={renderCapsule}
         contentContainerStyle={styles.listContainer}
@@ -479,10 +494,30 @@ const CapsulePage = () => {
             colors={[THEME.primary, THEME.primaryDark]} 
             style={styles.headerContainer}
           >
-            <Text style={styles.headerText}>My Time Capsules</Text>
-            <Text style={styles.subHeaderText}>
-              Explore and revisit your memories or unlock shared moments.
-            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.headerText}>My Time Capsules</Text>
+                <Text style={styles.subHeaderText}>
+                  Explore and revisit your memories or unlock shared moments.
+                </Text>
+              </View>
+              <View style={{ marginLeft: 10, minWidth: 40, minHeight: 40, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 8, overflow: 'hidden', backgroundColor: THEME.primaryDark }}>
+                <Picker
+                  selectedValue={sortOrder}
+                  style={{ width: 40, height: 40, color: '#fff', backgroundColor: 'transparent' }}
+                  dropdownIconColor="#fff"
+                  onValueChange={(itemValue) => setSortOrder(itemValue)}
+                  mode="dropdown"
+                >
+                  <Picker.Item label="Descending" value="desc" color="#000" />
+                  <Picker.Item label="Ascending" value="asc" color="#000" />
+                </Picker>
+                {/* Overlay icon for ASC/DESC */}
+                <View style={{ position: 'absolute', left: 0, top: 0, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
+                  <MaterialIcons name={sortOrder === 'asc' ? 'arrow-upward' : 'arrow-downward'} size={24} color="#fff" />
+                </View>
+              </View>
+            </View>
           </GradientComponent>
 
           {renderContent()}
