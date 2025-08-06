@@ -48,10 +48,15 @@ export const uploadMultipleFiles = (req, res, next) => {
     const middleware = upload.array('files', 10);
     middleware(req, res, (err) => {
         if (err instanceof multer.MulterError) {
+            console.error('Multer error:', err);
             return res.status(400).json({ error: 'File upload error', details: err.message });
         } else if (err) {
+            console.error('Upload error:', err);
             return res.status(500).json({ error: 'Server error', details: err.message });
         }
+        
+        console.log('Files uploaded successfully:', req.files ? req.files.length : 0);
+        
         // Proceed if no files were uploaded but it's optional
         if (!req.files || req.files.length === 0) {
             req.files = []; // Optional: Set to empty array if you want to handle missing files explicitly

@@ -168,9 +168,9 @@ const FriendsScreen = () => {
           allProfiles.map((profile) => (
             <View style={styles.profileItem} key={profile._id}>
               <Image
-                source={
-                  profile?.profilePicture
-                    ? { uri: `${Config.API_BASE_URL}/uploads/${profile.profilePicture}` }
+                                                         source={
+               profile?.profilePicture
+                 ? { uri: `${Config.API_BASE_URL}/uploads/${profile.profilePicture}` }
                     : require('../../assets/images/avatar.png')
                 }
                 style={styles.profileImage}

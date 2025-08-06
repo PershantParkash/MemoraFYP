@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import Config from 'react-native-config';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -19,6 +21,8 @@ import useBackButtonHandler from '../../hooks/useBackButtonHandler';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigationContext } from '../../context/NavigationContext';
 import { useFocusEffect } from '@react-navigation/native';
+import axiosInstance from '../../api/axiosInstance';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 let Video = null;
 let LinearGradient = null;
 
@@ -104,6 +108,93 @@ const CapsulePage = () => {
 
     fetchCapsules();
   }, []);
+
+  // Fetch current user ID on component mount
+  useEffect(() => {
+    const getCurrentUserId = async () => {
+      try {
+        const userId = await AsyncStorage.getItem('userId');
+        setCurrentUserId(userId);
+        console.log('Current user ID:', userId);
+      } catch (error) {
+        console.error('Error getting current user ID:', error);
+      }
+    };
+
+    getCurrentUserId();
+  }, []);
+
+  // Generate labels for shared capsules when capsules and currentUserId are available
+  useEffect(() => {
+    const generateCapsuleLabels = async () => {
+      if (!capsules.length || !currentUserId) return;
+
+      console.log('Generating labels for capsules. Current user ID:', currentUserId);
+      console.log('Capsules:', capsules);
+
+      const token = await AsyncStorage.getItem('authToken');
+      const newLabels = {};
+
+      for (const capsule of capsules) {
+        if (capsule.IsShared || capsule.CapsuleType === 'Shared') {
+          console.log('Processing shared capsule:', capsule.Title);
+          console.log('Capsule UserID:', capsule.UserID);
+          console.log('Capsule CreatedBy:', capsule.CreatedBy);
+          console.log('Capsule IsShared:', capsule.IsShared);
+          console.log('Capsule SharedWith:', capsule.SharedWith);
+          console.log('Current user ID:', currentUserId);
+          
+          // For shared capsules, check if user is creator or recipient
+          let isCreator = false;
+          if (capsule.IsShared) {
+            // Check if current user is the creator
+            isCreator = capsule.CreatedBy === currentUserId;
+          } else {
+            // For personal capsules, check if user is the owner
+            isCreator = capsule.UserID === currentUserId;
+          }
+          console.log('Is creator:', isCreator);
+          
+          if (isCreator) {
+            // User is creator - show who it's shared with
+            if (capsule.SharedWith && capsule.SharedWith.length > 0) {
+              if (capsule.SharedWith.length === 1) {
+                newLabels[capsule._id] = `Shared with: ${capsule.SharedWith.length} friend`;
+              } else {
+                newLabels[capsule._id] = `Shared with: ${capsule.SharedWith.length} friends`;
+              }
+            } else {
+              newLabels[capsule._id] = 'Shared (not sent yet)';
+            }
+          } else {
+            // User is recipient - show who shared it with them
+            console.log('Fetching creator profile for CreatedBy:', capsule.CreatedBy);
+            try {
+              const creatorResponse = await axiosInstance.get(`/api/profiles/getProfileByID/${capsule.CreatedBy}`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              
+              console.log('Creator profile response:', creatorResponse.data);
+              const creatorProfile = creatorResponse.data;
+              newLabels[capsule._id] = `Shared by: ${creatorProfile.username || 'Unknown User'}`;
+              console.log('Set label for capsule:', capsule.Title, 'to:', newLabels[capsule._id]);
+            } catch (creatorError) {
+              console.error('Error fetching creator profile for capsule:', capsule._id, creatorError);
+              console.error('Error response:', creatorError.response?.data);
+              newLabels[capsule._id] = 'Shared by: Friend';
+            }
+          }
+        }
+      }
+
+      console.log('Final labels:', newLabels);
+      setCapsuleLabels(newLabels);
+    };
+
+    generateCapsuleLabels();
+  }, [capsules, currentUserId]);
 
 
   useEffect(() => {
@@ -367,7 +458,161 @@ const CapsulePage = () => {
     setSelectedMedia(null);
   };
 
-  const renderCapsule = ({ item }) => (
+  const [isEmotionalConnectionModalVisible, setIsEmotionalConnectionModalVisible] = useState(false);
+  const [isSharedFriendsModalVisible, setIsSharedFriendsModalVisible] = useState(false);
+  const [selectedCapsule, setSelectedCapsule] = useState(null);
+  const [sharedFriends, setSharedFriends] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [capsuleLabels, setCapsuleLabels] = useState({}); // Store labels for capsules
+
+  const handleEmotionalConnectionPress = (capsule) => {
+    setSelectedCapsule(capsule);
+    setIsEmotionalConnectionModalVisible(true);
+  };
+
+  const handleCloseEmotionalConnectionModal = () => {
+    setIsEmotionalConnectionModalVisible(false);
+    setSelectedCapsule(null);
+  };
+
+  const handleSharedTypePress = async (capsule) => {
+    console.log('Shared type pressed for capsule:', capsule);
+    console.log('Capsule SharedWith:', capsule.SharedWith);
+    console.log('Capsule CreatorProfile:', capsule.CreatorProfile);
+    
+    // For shared capsules, we should show the modal even if SharedWith is empty
+    // as it might be a shared capsule that hasn't been shared with anyone yet
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axiosInstance.get('/api/friends/user-friends', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      console.log('All friends response:', response.data);
+      console.log('All friends:', response.data.friends);
+      
+      let sharedFriendsData = [];
+      
+      // If capsule has SharedWith data, filter friends
+      if (capsule.SharedWith && capsule.SharedWith.length > 0) {
+        // Convert SharedWith to array of strings for comparison
+        const sharedWithIds = capsule.SharedWith.map(id => id.toString());
+        console.log('SharedWith IDs (converted to strings):', sharedWithIds);
+        
+        sharedFriendsData = response.data.friends.filter(friend => {
+          // The friend object from getUserFriends has _id field
+          const friendId = friend._id ? friend._id.toString() : null;
+          console.log('Checking friend:', friend.username, 'ID:', friendId);
+          const isShared = sharedWithIds.includes(friendId);
+          console.log('Is shared:', isShared);
+          return isShared;
+        });
+      } else {
+        // If no SharedWith data, this might be a shared capsule created by the current user
+        // Show all friends as potential sharing options
+        console.log('No SharedWith data found, showing all friends as potential sharing options');
+        sharedFriendsData = response.data.friends;
+      }
+      
+      console.log('Final shared friends data:', sharedFriendsData);
+      setSharedFriends(sharedFriendsData);
+      setSelectedCapsule(capsule);
+      setIsSharedFriendsModalVisible(true);
+
+      // Generate and store labels for this capsule
+      let isCreator = false;
+      if (capsule.IsShared) {
+        // Check if current user is the creator
+        isCreator = capsule.CreatedBy === currentUserId;
+      } else {
+        // For personal capsules, check if user is the owner
+        isCreator = capsule.UserID === currentUserId;
+      }
+      let label = '';
+      
+      if (isCreator) {
+        // User is creator - show who it's shared with
+        if (sharedFriendsData.length > 0) {
+          if (sharedFriendsData.length === 1) {
+            label = `Shared with: ${sharedFriendsData[0].username}`;
+          } else {
+            label = `Shared with: ${sharedFriendsData.length} friends`;
+          }
+        } else {
+          label = 'Shared (not sent yet)';
+        }
+      } else {
+        // User is recipient - show who shared it with them
+        // Use the CreatorProfile data that's now included in the capsule
+        if (capsule.CreatorProfile && capsule.CreatorProfile.username) {
+          label = `Shared by: ${capsule.CreatorProfile.username}`;
+        } else {
+          label = 'Shared by: Friend';
+        }
+      }
+      
+      // Store the label for this capsule
+      setCapsuleLabels(prev => ({
+        ...prev,
+        [capsule._id]: label
+      }));
+    } catch (error) {
+      console.error('Error fetching shared friends:', error);
+      console.error('Error response:', error.response?.data);
+      // Still show modal even if there's an error
+      setSharedFriends([]);
+      setSelectedCapsule(capsule);
+      setIsSharedFriendsModalVisible(true);
+    }
+  };
+
+  const handleCloseSharedFriendsModal = () => {
+    setIsSharedFriendsModalVisible(false);
+    setSelectedCapsule(null);
+    setSharedFriends([]);
+  };
+
+  // Function to get the appropriate shared capsule label
+  const getSharedCapsuleLabel = (capsule) => {
+    if (!capsule.IsShared && capsule.CapsuleType !== 'Shared') {
+      return 'Personal';
+    }
+
+    // If we don't have current user ID yet, show generic "Shared"
+    if (!currentUserId) {
+      return 'Shared';
+    }
+
+    // Check if we have a stored label for this capsule
+    if (capsuleLabels[capsule._id]) {
+      return capsuleLabels[capsule._id];
+    }
+
+    // Check if current user is the creator
+    const isCreator = capsule.UserId === currentUserId;
+    
+    if (isCreator) {
+      // User is creator - show who it's shared with
+      if (capsule.SharedWith && capsule.SharedWith.length > 0) {
+        return `Shared with: ${capsule.SharedWith.length} friend${capsule.SharedWith.length > 1 ? 's' : ''}`;
+      } else {
+        return 'Shared (not sent yet)';
+      }
+    } else {
+      // User is recipient - show who shared it with them
+      if (capsule.CreatorProfile && capsule.CreatorProfile.username) {
+        return `Shared by: ${capsule.CreatorProfile.username}`;
+      } else {
+        return 'Shared by: Friend';
+      }
+    }
+  };
+
+  const renderCapsule = ({ item }) => {
+
+    return (
     <View style={styles.capsuleContainer}>
       <View style={styles.titleContainer}>
         <Text style={styles.title}>{item.Title}</Text>
@@ -378,7 +623,38 @@ const CapsulePage = () => {
         />
       </View>
 
-      <Text style={styles.description}>{item.Description}</Text>
+                 {/* Emotional Connection Button */}
+         {item.Description && item.Description.trim() !== '' && (
+           <TouchableOpacity
+             style={[styles.emotionalConnectionButton, { backgroundColor: THEME.secondary }]}
+             onPress={() => handleEmotionalConnectionPress(item)}
+           >
+             <MaterialIcons name="chat" size={16} color="white" />
+             <Text style={styles.emotionalConnectionText}>💬 Emotional Connection</Text>
+           </TouchableOpacity>
+         )}
+
+         {/* Capsule Type - Clickable for Shared capsules */}
+         {(item.IsShared || item.CapsuleType === 'Shared') ? (
+           <TouchableOpacity 
+             style={[styles.capsuleTypeContainer, styles.clickableCapsuleType]}
+             onPress={() => handleSharedTypePress(item)}
+           >
+             <MaterialIcons name="folder" size={16} color="#666" />
+             <Text style={styles.capsuleTypeText}>
+               {getSharedCapsuleLabel(item)}
+             </Text>
+             <MaterialIcons name="chevron-right" size={16} color="#666" />
+           </TouchableOpacity>
+         ) : (
+           <View style={styles.capsuleTypeContainer}>
+             <MaterialIcons name="folder" size={16} color="#666" />
+             <Text style={styles.capsuleTypeText}>
+               {getSharedCapsuleLabel(item)}
+             </Text>
+           </View>
+         )}
+
 
       
       {item.Media && (
@@ -418,6 +694,116 @@ const CapsulePage = () => {
         </TouchableOpacity>
       )}
     </View>
+    );
+  };
+
+  // Emotional Connection Modal
+  const renderEmotionalConnectionModal = () => (
+    <Modal
+      visible={isEmotionalConnectionModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={handleCloseEmotionalConnectionModal}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Emotional Connection</Text>
+          <Text style={styles.modalDescription}>
+            {selectedCapsule?.Description || 'No emotional connection available.'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: THEME.primary }]}
+            onPress={handleCloseEmotionalConnectionModal}
+          >
+            <Text style={styles.modalButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Shared Friends Modal
+  const renderSharedFriendsModal = () => (
+    <Modal
+      visible={isSharedFriendsModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={handleCloseSharedFriendsModal}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>
+            {selectedCapsule?.Title} - Shared with Friends
+          </Text>
+          
+          {/* Show creator information if user is a recipient */}
+          {selectedCapsule?.IsShared && selectedCapsule?.CreatedBy !== currentUserId && selectedCapsule?.CreatorProfile && (
+            <View style={styles.creatorInfoContainer}>
+              <Text style={styles.creatorLabel}>Created by:</Text>
+              <View style={styles.creatorProfileContainer}>
+                {selectedCapsule.CreatorProfile.profilePicture ? (
+                  <Image 
+                    source={{ uri: `${Config.API_BASE_URL}/uploads/${selectedCapsule.CreatorProfile.profilePicture}` }}
+                    style={styles.creatorProfilePic}
+                    onError={() => console.log('Failed to load creator profile picture')}
+                  />
+                ) : (
+                  <MaterialIcons name="person" size={24} color="#666" />
+                )}
+                <Text style={styles.creatorName}>
+                  {selectedCapsule.CreatorProfile.username || 'Unknown User'}
+                </Text>
+              </View>
+            </View>
+          )}
+          
+          <ScrollView style={styles.modalScrollView}>
+            {sharedFriends.length > 0 ? (
+              <>
+                <Text style={styles.modalDescription}>
+                  {selectedCapsule?.SharedWith && selectedCapsule.SharedWith.length > 0 
+                    ? `This capsule is shared with ${sharedFriends.length} friend${sharedFriends.length > 1 ? 's' : ''}:`
+                    : `This shared capsule can be shared with ${sharedFriends.length} friend${sharedFriends.length > 1 ? 's' : ''}:`
+                  }
+                </Text>
+                {sharedFriends.map(friend => (
+                  <View key={friend._id} style={styles.sharedFriendItem}>
+                    {friend.profilePicture ? (
+                      <Image 
+                        source={{ uri: `${Config.API_BASE_URL}/uploads/${friend.profilePicture}` }}
+                        style={styles.friendProfilePic}
+                        onError={() => console.log('Failed to load profile picture for:', friend.username)}
+                      />
+                    ) : (
+                      <MaterialIcons name="person" size={20} color="#666" />
+                    )}
+                    <Text style={styles.sharedFriendName}>
+                      {friend.username || 'Unknown User'}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <View style={styles.noFriendsContainer}>
+                <MaterialIcons name="people-outline" size={48} color="#ccc" />
+                <Text style={styles.modalDescription}>
+                  {selectedCapsule?.SharedWith && selectedCapsule.SharedWith.length > 0
+                    ? "This is a shared capsule, but it hasn't been shared with any friends yet."
+                    : "You don't have any friends to share this capsule with."
+                  }
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: THEME.secondary }]}
+            onPress={handleCloseSharedFriendsModal}
+          >
+            <Text style={styles.modalButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 
   const renderContent = () => {
@@ -523,6 +909,10 @@ const CapsulePage = () => {
           {renderContent()}
         </>
       )}
+
+      {/* Modals */}
+      {renderEmotionalConnectionModal()}
+      {renderSharedFriendsModal()}
     </View>
   );
 };
@@ -587,6 +977,46 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 10,
   },
+  emotionalConnectionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  emotionalConnectionText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 5,
+  },
+  capsuleTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  capsuleTypeText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 5,
+    flex: 1,
+  },
+  clickableCapsuleType: {
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+
   mediaTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -820,5 +1250,115 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#777',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    maxHeight: '70%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalSharedBy: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 20,
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  sharedFriendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  sharedFriendName: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 10,
+  },
+  friendProfilePic: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  shareWithFriendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: THEME.primary,
+    borderRadius: 5,
+  },
+  shareWithFriendText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 5,
+  },
+  modalScrollView: {
+    maxHeight: 200,
+    width: '100%',
+  },
+  noFriendsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  creatorInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  creatorLabel: {
+    fontSize: 14,
+    color: '#555',
+    marginRight: 5,
+  },
+  creatorProfileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  creatorProfilePic: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 5,
+  },
+  creatorName: {
+    fontSize: 14,
+    color: '#333',
   },
 });

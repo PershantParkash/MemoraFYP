@@ -1,6 +1,7 @@
 import TimeCapsule from '../models/TimeCapsule.js'; 
 import SharedCapsule from '../models/SharedCapsule.js'
 import mongoose from 'mongoose';
+import { Profile } from '../models/Profile.js';
 // export const createTimeCapsule = async (req, res) => {
 //   try {
 //     const { title, description, unlockDate, capsuleType, friends } = req.body;
@@ -47,9 +48,24 @@ export const getCapsules = async (req, res) => {
     const userId = req.userId; 
     const personalCapsules = await TimeCapsule.find({ UserID: userId });
 
-    const sharedCapsules = await SharedCapsule.find({ Friends: userId }).populate({
-      path: 'TimeCapsuleID',
-      model: 'TimeCapsule',
+    const sharedCapsules = await SharedCapsule.find({ Friends: userId })
+      .populate({
+        path: 'TimeCapsuleID',
+        model: 'TimeCapsule',
+      })
+      .populate({
+        path: 'CreatedBy',
+        model: 'User',
+      });
+
+    // Get profile information for all creators
+    const creatorIds = [...new Set(sharedCapsules.map(sc => sc.CreatedBy._id))];
+    const creatorProfiles = await Profile.find({ userId: { $in: creatorIds } });
+    
+    // Create a map for quick lookup
+    const profileMap = {};
+    creatorProfiles.forEach(profile => {
+      profileMap[profile.userId.toString()] = profile;
     });
 
     const currentDate = new Date();
@@ -66,10 +82,13 @@ export const getCapsules = async (req, res) => {
 
     const sharedCapsuleDetails = sharedCapsules.map(sharedCapsule => {
       const capsuleData = updateStatus(sharedCapsule.TimeCapsuleID);
+      const creatorProfile = profileMap[sharedCapsule.CreatedBy._id.toString()];
+      
       return {
         ...capsuleData,
         SharedWith: sharedCapsule.Friends, 
         CreatedBy: sharedCapsule.CreatedBy, 
+        CreatorProfile: creatorProfile || null, // This will contain the profile info
       };
     });
 
@@ -94,11 +113,66 @@ export const createTimeCapsule = async (req, res) => {
   try {
     const { title, description, unlockDate, capsuleType, friends } = req.body;
     const userId = req.userId;
-    const media = req.file.filename;
+    
+    console.log('Received request:', {
+      body: req.body,
+      files: req.files ? req.files.map(f => ({ name: f.originalname, mimetype: f.mimetype })) : 'No files',
+      file: req.file ? { name: req.file.originalname, mimetype: req.file.mimetype } : 'No single file'
+    });
+    
+    // Handle multiple files upload
+    let media = null;
+    let finalDescription = description;
+    
+    if (req.files && req.files.length > 0) {
+      console.log('Processing multiple files:', req.files.length);
+      
+      // Find the image file (first file is typically the image)
+      const imageFile = req.files.find(file => 
+        file.mimetype.startsWith('image/')
+      );
+      
+      // Find the audio file (if any)
+      const audioFile = req.files.find(file => 
+        file.mimetype.startsWith('audio/')
+      );
+      
+      console.log('Found files:', {
+        imageFile: imageFile ? { name: imageFile.originalname, mimetype: imageFile.mimetype } : null,
+        audioFile: audioFile ? { name: audioFile.originalname, mimetype: audioFile.mimetype } : null
+      });
+      
+      if (imageFile) {
+        media = imageFile.filename;
+        console.log('Image file saved as:', media);
+      }
+      
+      // If we have an audio file and the description is a local file path, 
+      // replace it with the uploaded audio filename
+      if (audioFile && description && description.startsWith('file://')) {
+        finalDescription = audioFile.filename;
+        console.log('Audio file saved as description:', finalDescription);
+      }
+    } else if (req.file) {
+      // Fallback for single file upload
+      media = req.file.filename;
+      console.log('Single file saved as:', media);
+    } else {
+      console.log('No files found in request');
+    }
+
+    console.log('Creating time capsule with:', {
+      Title: title,
+      Description: finalDescription,
+      UnlockDate: unlockDate,
+      CapsuleType: capsuleType,
+      Media: media,
+      UserID: userId
+    });
 
     const timeCapsule = await TimeCapsule.create({
       Title: title,
-      Description: description,
+      Description: finalDescription,
       UnlockDate: unlockDate,
       CapsuleType: capsuleType,
       Status: 'Locked',
@@ -132,3 +206,5 @@ export const createTimeCapsule = async (req, res) => {
     });
   }
 };
+
+

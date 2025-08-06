@@ -7,12 +7,15 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { MyContext } from '../context/MyContext';
 import useCapsuleService from '../hooks/useCapsuleService';
 import { useNavigation } from '@react-navigation/native';
@@ -33,6 +36,10 @@ const CapsuleCreationScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [friends, setFriends] = useState([]);
   const [isCheckingFriends, setIsCheckingFriends] = useState(false);
+
+  // Emotional Connection Modal States
+  const [isEmotionalModalVisible, setIsEmotionalModalVisible] = useState(false);
+  const [emotionalText, setEmotionalText] = useState('');
 
   useEffect(() => {
     if (!fileUri) {
@@ -87,6 +94,28 @@ const CapsuleCreationScreen = () => {
     }
   };
 
+  const openEmotionalModal = () => {
+    setIsEmotionalModalVisible(true);
+  };
+
+  const closeEmotionalModal = () => {
+    setIsEmotionalModalVisible(false);
+    setEmotionalText('');
+  };
+
+  const saveEmotionalConnection = () => {
+    console.log('Saving emotional connection:', {
+      emotionalText: emotionalText?.trim()
+    });
+    
+    if (emotionalText.trim()) {
+      setDescription(emotionalText);
+      closeEmotionalModal();
+    } else {
+      Alert.alert('Error', 'Please provide content before saving');
+    }
+  };
+
   const validateForm = () => {
     if (!title.trim()) {
       Alert.alert('Title Required', 'Please enter a title for your capsule');
@@ -112,6 +141,42 @@ const CapsuleCreationScreen = () => {
 
     setIsLoading(true);
     try {
+      // Prepare form data for file upload
+      const formData = new FormData();
+      
+      // Add image file (required)
+      if (fileUri) {
+        formData.append('files', {
+          uri: fileUri,
+          type: 'image/jpeg',
+          name: 'capsule_image.jpg'
+        });
+      } else {
+        // If no image, we need to handle this case
+        console.error('No image file provided');
+        Alert.alert('Error', 'Please select an image for the capsule.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Add other capsule data
+      formData.append('title', title);
+      formData.append('description', description || ''); // Ensure description is never undefined
+      formData.append('unlockDate', unlockDate.toISOString());
+      formData.append('capsuleType', capsuleType);
+      
+      // For shared capsules, we'll handle friend selection in SendCapsulePage
+      // So we don't need to pass friends here
+
+      console.log('FormData being sent:', {
+        title,
+        description: description || '',
+        unlockDate: unlockDate.toISOString(),
+        capsuleType,
+        hasImage: !!fileUri,
+        fileUri: fileUri
+      });
+
       setCapsuleInfo({
         ...capsuleInfo,
         title,
@@ -121,23 +186,43 @@ const CapsuleCreationScreen = () => {
       });
 
       if (capsuleType === 'Personal') {
-        await handleCreateCapsule({ title, description, unlockDate, capsuleType, fileUri });
+        // Create personal capsule
+        const response = await handleCreateCapsule(formData);
         Toast.show({
           type: 'success',
-          text1: 'Capsule Created Successful!',
-          text2: 'Capsule Created Successful!',
+          text1: 'Capsule Created Successfully!',
+          text2: 'Capsule Created Successfully!',
         });
      
         setTimeout(() => {
-        navigation.navigate('Tab');
-      }, 500);
-
+          navigation.navigate('Tab');
+        }, 500);
       } else if (capsuleType === 'Shared') {
+        // For shared capsules, navigate to send page with capsule info
+        setCapsuleInfo({
+          ...capsuleInfo,
+          title,
+          description,
+          unlockDate,
+          capsuleType,
+          fileUri,
+        });
         navigation.navigate('SendCapsulePage');
       }
     } catch (error) {
       console.error('Capsule creation failed:', error);
-      Alert.alert('Error', 'Failed to create capsule. Try again.');
+      console.error('Error details:', error.response?.data || error.message);
+      console.error('Error status:', error.response?.status);
+      console.error('Error headers:', error.response?.headers);
+      
+      let errorMessage = 'Failed to create capsule. Try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -149,12 +234,60 @@ const CapsuleCreationScreen = () => {
       (capsuleType === 'Shared' && friends.length === 0);
   };
 
+  const renderEmotionalModal = () => (
+    <Modal
+      visible={isEmotionalModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={closeEmotionalModal}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Emotional Connection</Text>
+            <TouchableOpacity onPress={closeEmotionalModal}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.textInputContainer}>
+            <Text style={styles.inputLabel}>Write your emotional message:</Text>
+            <TextInput
+              style={styles.multilineInput}
+              placeholder="Share your feelings, memories, or thoughts..."
+              value={emotionalText}
+              onChangeText={setEmotionalText}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={closeEmotionalModal}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveButton} onPress={saveEmotionalConnection}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Create a Time Capsule</Text>
 
       <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
-      <TextInput style={styles.input} placeholder="Description" value={description} onChangeText={setDescription} />
+      
+      <TouchableOpacity style={styles.emotionalButton} onPress={openEmotionalModal}>
+        <Ionicons name="heart-outline" size={20} color="#6BAED6" />
+        <Text style={styles.emotionalButtonText}>
+          {description ? 'Emotional Connection Added' : 'Add Emotional Connection'}
+        </Text>
+        {description && <Ionicons name="checkmark-circle" size={20} color="#52C41A" />}
+      </TouchableOpacity>
 
       <View style={styles.picker}>
         <Text style={styles.label}>Capsule Type</Text>
@@ -221,6 +354,8 @@ const CapsuleCreationScreen = () => {
         onCancel={hideDatePicker}
         minimumDate={new Date(Date.now() + 86400000)}
       />
+
+      {renderEmotionalModal()}
     </View>
   );
 };
@@ -231,6 +366,14 @@ const styles = StyleSheet.create({
   input: {
     width: '100%', height: 50, borderColor: '#ddd', borderWidth: 1, borderRadius: 8,
     paddingHorizontal: 16, marginBottom: 12, fontSize: 16,
+  },
+  emotionalButton: {
+    width: '100%', height: 50, borderColor: '#ddd', borderWidth: 1, borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, marginBottom: 12,
+  },
+  emotionalButtonText: {
+    flex: 1, marginLeft: 10, fontSize: 16, color: '#333',
   },
   picker: { width: '100%', marginBottom: 12 },
   label: { fontSize: 16, fontWeight: 'bold', marginBottom: 8, color: '#333' },
@@ -263,6 +406,82 @@ const styles = StyleSheet.create({
     backgroundColor: "white", justifyContent: 'center', alignItems: 'center', zIndex: 1000,
   },
   loadingText: { marginTop: 10, fontSize: 16, color: '#333', fontWeight: '600' },
+  // Emotional Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+  },
+
+  textInputContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  multilineInput: {
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 20,
+  },
+  cancelButton: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  saveButton: {
+    backgroundColor: '#6BAED6',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  disabledSaveButton: {
+    backgroundColor: '#a0c8e0',
+  },
 });
 
 export default CapsuleCreationScreen;

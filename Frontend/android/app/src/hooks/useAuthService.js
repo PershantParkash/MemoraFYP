@@ -16,7 +16,6 @@ const useAuthService = () => {
         }
       });
 
-      
       const data = response.data;
       const { token } = data;
 

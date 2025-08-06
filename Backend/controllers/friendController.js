@@ -63,7 +63,6 @@ export const getUserFriends = async (req, res) => {
     try {
         const userId = req.userId; 
 
-    
         const friendships = await Friendship.find({
             $or: [
                 { user_id: userId, status: 'accepted' },
@@ -77,7 +76,29 @@ export const getUserFriends = async (req, res) => {
                 : friendship.user_id;
         });
 
-        res.status(200).json({ friends });
+        // Fetch profile information for all friends
+        const friendIds = friends.map(friend => friend._id);
+        const profiles = await Profile.find({ userId: { $in: friendIds } });
+        
+        // Create a map of userId to profile
+        const profileMap = {};
+        profiles.forEach(profile => {
+            profileMap[profile.userId.toString()] = profile;
+        });
+
+        // Combine friend data with profile data
+        const friendsWithProfiles = friends.map(friend => {
+            const profile = profileMap[friend._id.toString()];
+            return {
+                _id: friend._id,
+                email: friend.email,
+                username: profile ? profile.username : 'Unknown User',
+                profilePicture: profile ? profile.profilePicture : null,
+                profile: profile
+            };
+        });
+
+        res.status(200).json({ friends: friendsWithProfiles });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error retrieving friends', error });

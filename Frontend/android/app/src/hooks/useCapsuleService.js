@@ -49,7 +49,7 @@ const useCapsuleService = () => {
     }
   };
 
-  const handleCreateCapsule = async (capsuleInfo) => {
+  const handleCreateCapsule = async (capsuleInfoOrFormData) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
 
@@ -62,48 +62,54 @@ const useCapsuleService = () => {
         return;
       }
 
-      const formData = new FormData();
-      formData.append('title', capsuleInfo.title);
-      formData.append('description', capsuleInfo.description);
-      formData.append('unlockDate', moment(capsuleInfo.unlockDate).format('YYYY-M-D'));
-      formData.append('capsuleType', capsuleInfo.capsuleType);
-
+      let formData;
       
-      if (capsuleInfo.mediaType) {
-        formData.append('mediaType', capsuleInfo.mediaType);
-      }
-
-      if (capsuleInfo.capsuleType === 'Shared' && capsuleInfo.friends && capsuleInfo.friends.length > 0) {
-        capsuleInfo.friends.forEach((friendId) => {
-          formData.append('friends[]', friendId);
-        });
-      }
-
-      if (capsuleInfo.fileUri) {
-        const fileName = capsuleInfo.fileUri.split('/').pop();
-        const mediaType = capsuleInfo.mediaType || 'photo'; 
-        const fileType = getFileType(capsuleInfo.fileUri, mediaType);
-        
-        formData.append('file', {
-          uri: capsuleInfo.fileUri,
-          name: fileName,
-          type: fileType,
-        });
-
-        console.log(`Uploading ${mediaType} file:`, {
-          fileName,
-          fileType,
-          mediaType
-        });
-        
-
+      // Check if we're receiving FormData (for multiple files) or capsuleInfo object
+      if (capsuleInfoOrFormData instanceof FormData) {
+        formData = capsuleInfoOrFormData;
       } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Media Error',
-          text2: 'No valid media file provided.',
-        });
-        return;
+        // Handle the original capsuleInfo object format
+        const capsuleInfo = capsuleInfoOrFormData;
+        formData = new FormData();
+        formData.append('title', capsuleInfo.title);
+        formData.append('description', capsuleInfo.description);
+        formData.append('unlockDate', moment(capsuleInfo.unlockDate).format('YYYY-M-D'));
+        formData.append('capsuleType', capsuleInfo.capsuleType);
+
+        if (capsuleInfo.mediaType) {
+          formData.append('mediaType', capsuleInfo.mediaType);
+        }
+
+        if (capsuleInfo.capsuleType === 'Shared' && capsuleInfo.friends && capsuleInfo.friends.length > 0) {
+          capsuleInfo.friends.forEach((friendId) => {
+            formData.append('friends[]', friendId);
+          });
+        }
+
+        if (capsuleInfo.fileUri) {
+          const fileName = capsuleInfo.fileUri.split('/').pop();
+          const mediaType = capsuleInfo.mediaType || 'photo'; 
+          const fileType = getFileType(capsuleInfo.fileUri, mediaType);
+          
+          formData.append('file', {
+            uri: capsuleInfo.fileUri,
+            name: fileName,
+            type: fileType,
+          });
+
+          console.log(`Uploading ${mediaType} file:`, {
+            fileName,
+            fileType,
+            mediaType
+          });
+        } else {
+          Toast.show({
+            type: 'error',
+            text1: 'Media Error',
+            text2: 'No valid media file provided.',
+          });
+          return;
+        }
       }
 
       const response = await axiosInstance.post('/api/timecapsules/create', formData, {
@@ -114,11 +120,10 @@ const useCapsuleService = () => {
         timeout: 30000, 
       });
 
-      const mediaTypeText = capsuleInfo.mediaType || 'media';
       Toast.show({
         type: 'success',
         text1: 'Capsule Created',
-        text2: `Your time capsule with ${mediaTypeText} has been created successfully.`,
+        text2: 'Your time capsule has been created successfully.',
       });
 
      

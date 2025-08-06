@@ -122,30 +122,54 @@ const SendCapsulePage = () => {
 
     setIsSendingCapsule(true);
     try {
-      await handleCreateCapsule({
-        title,
-        description,
-        unlockDate,
-        capsuleType,
-        fileUri,
-        friends: selectedFriends,
+      const token = await AsyncStorage.getItem('authToken');
+      
+      // Create the shared capsule with selected friends
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description || '');
+      formData.append('unlockDate', unlockDate.toISOString());
+      formData.append('capsuleType', 'Shared');
+      
+      // Add image file
+      if (fileUri) {
+        formData.append('files', {
+          uri: fileUri,
+          type: 'image/jpeg',
+          name: 'capsule_image.jpg'
+        });
+      }
+      
+      // Add selected friends
+      selectedFriends.forEach(friendId => {
+        formData.append('friends[]', friendId);
+      });
+      
+      const response = await axiosInstance.post('/api/timecapsules/create', formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
       });
       
       Toast.show({
         type: 'success',
-        text1: 'Capsule Sent! 🎉',
-        text2: `Successfully sent to ${selectedFriends.length} friend${selectedFriends.length > 1 ? 's' : ''}`,
+        text1: 'Capsule Shared! 🎉',
+        text2: `Successfully shared with ${selectedFriends.length} friend${selectedFriends.length > 1 ? 's' : ''}`,
       });
+      
+      // Clear the capsule info from context
+      setCapsuleInfo({});
       
       setTimeout(() => {
         navigation.navigate('Tab');
       }, 500);
     } catch (error) {
-      console.error('Error sending capsule:', error);
+      console.error('Error sharing capsule:', error);
       Toast.show({
         type: 'error',
-        text1: 'Send Failed',
-        text2: 'Failed to send capsule. Please try again.',
+        text1: 'Share Failed',
+        text2: 'Failed to share capsule. Please try again.',
       });
     } finally {
       setIsSendingCapsule(false);
