@@ -18,6 +18,7 @@ import SettingsScreen from './android/app/src/screens/SettingsScreen';
 import EditProfileScreen from './android/app/src/screens/EditProfileScreen'
 import CapsuleCreationScreen from './android/app/src/screens/CapsuleCreationScreen';
 import SendCapsulePage from './android/app/src/screens/SendCapsulePage';
+import UserProfileScreen from './android/app/src/screens/UserProfileScreen';
 
 // Disable all warning notifications
 LogBox.ignoreAllLogs(true);
@@ -76,6 +77,7 @@ const AppContent = () => {
         <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
         <Stack.Screen name="CapsuleCreationScreen" component={CapsuleCreationScreen} />
         <Stack.Screen name="SendCapsulePage" component={SendCapsulePage} />
+        <Stack.Screen name="UserProfileScreen" component={UserProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

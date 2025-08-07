@@ -108,82 +108,106 @@ const CapsuleCalendarPage = () => {
         <Text style={styles.headerText}>TimeCapsule Calendar</Text>
       </View>
 
-      <View style={styles.calendarContainer}>
-        <Calendar
-          onDayPress={handleDateSelect}
-          markingType={'custom'}
-          markedDates={{
-            ...markedDates,
-            ...(selectedDate && {
-              [selectedDate]: {
-                selected: true,
-                selectedColor: '#00bcd4',
-                selectedTextColor: '#ffffff',
-                ...markedDates[selectedDate]?.customStyles,
-              },
-            }),
-          }}
-          theme={{
-            backgroundColor: '#ffffff',
-            calendarBackground: '#ffffff',
-            textSectionTitleColor: '#b6c1cd',
-            selectedDayBackgroundColor: '#00bcd4',
-            selectedDayTextColor: '#ffffff',
-            todayTextColor: '#6a11cb',
-            dayTextColor: '#2d4150',
-            textDisabledColor: '#d9e1e8',
-            arrowColor: '#6a11cb',
-            monthTextColor: '#6a11cb',
-            indicatorColor: '#6a11cb',
-          }}
-        />
-      </View>
-
-      <View style={styles.infoContainer}>
-        {selectedCapsules.length > 0 ? (
-          <>
-            <Text style={styles.infoText}>
-              {selectedCapsules.length === 1
-                ? `1 Time Capsule scheduled for `
-                : `${selectedCapsules.length} Time Capsules scheduled for `}
-              <Text style={styles.dateText}>{selectedDate}</Text>
-            </Text>
-
-            <View style={styles.capsulesContainer}>
-              {selectedCapsules.map((capsule, index) => renderCapsuleItem(capsule, index))}
-            </View>
-          </>
-        ) : selectedDate ? (
-          <>
-            <Text style={styles.infoText}>
-              No Time Capsules are scheduled to unlock for you on this date:
-              <Text style={styles.dateText}> {selectedDate}</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => {
-                navigation.navigate('CameraScreen');
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading your capsules...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.calendarContainer}>
+            <Calendar
+              onDayPress={handleDateSelect}
+              markingType={'custom'}
+              markedDates={{
+                ...markedDates,
+                ...(selectedDate && {
+                  [selectedDate]: {
+                    selected: true,
+                    selectedColor: '#00bcd4',
+                    selectedTextColor: '#ffffff',
+                    ...markedDates[selectedDate]?.customStyles,
+                  },
+                }),
               }}
-            >
-              <Text style={styles.buttonText}>Create Capsules</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <Text style={styles.infoText}>
-              Tap on a highlighted date to see capsule details.
-            </Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => {
-                navigation.navigate('CameraScreen');
+              theme={{
+                backgroundColor: '#ffffff',
+                calendarBackground: '#ffffff',
+                textSectionTitleColor: '#b6c1cd',
+                selectedDayBackgroundColor: '#00bcd4',
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: '#6a11cb',
+                dayTextColor: '#2d4150',
+                textDisabledColor: '#d9e1e8',
+                arrowColor: '#6a11cb',
+                monthTextColor: '#6a11cb',
+                indicatorColor: '#6a11cb',
               }}
-            >
-              <Text style={styles.buttonText}>Create Capsules</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
+            />
+          </View>
+
+          <View style={styles.infoContainer}>
+            {selectedCapsules.length > 0 ? (
+              <>
+                <Text style={styles.infoText}>
+                  {selectedCapsules.length === 1
+                    ? `1 Time Capsule scheduled for `
+                    : `${selectedCapsules.length} Time Capsules scheduled for `}
+                  <Text style={styles.dateText}>{selectedDate}</Text>
+                </Text>
+
+                {selectedCapsules.length > 4 && (
+                  <Text style={styles.scrollHint}>
+                    Scroll to see all {selectedCapsules.length} capsules
+                  </Text>
+                )}
+
+                <View style={styles.capsulesContainer}>
+                  <ScrollView 
+                    style={styles.capsulesScrollView}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                  >
+                    {selectedCapsules.map((capsule, index) => renderCapsuleItem(capsule, index))}
+                  </ScrollView>
+                </View>
+              </>
+            ) : selectedDate ? (
+              <>
+                <Text style={styles.infoText}>
+                  No Time Capsules are scheduled to unlock for you on this date:
+                  <Text style={styles.dateText}> {selectedDate}</Text>
+                </Text>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => {
+                    navigation.navigate('CameraScreen');
+                  }}
+                >
+                  <Text style={styles.buttonText}>Create Capsules</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.infoText}>
+                  Tap on a highlighted date to see capsule details.
+                </Text>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => {
+                    navigation.navigate('CameraScreen');
+                  }}
+                >
+                  <Text style={styles.buttonText}>Create Capsules</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 };
@@ -230,9 +254,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  scrollHint: {
+    fontSize: 14,
+    color: '#fff',
+    marginTop: 10,
+    marginBottom: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
   capsulesContainer: {
     width: '100%',
-    maxHeight: 300,
+    maxHeight: 400,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    padding: 10,
+  },
+  capsulesScrollView: {
+    width: '100%',
   },
   capsuleItem: {
     flexDirection: 'row',
@@ -247,6 +285,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    minHeight: 70,
   },
   capsuleInfo: {
     flex: 1,
@@ -283,5 +322,28 @@ const styles = StyleSheet.create({
     color: '#6BAED6',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#6BAED6',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#6BAED6',
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

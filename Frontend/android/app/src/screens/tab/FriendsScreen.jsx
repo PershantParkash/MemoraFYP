@@ -91,25 +91,38 @@ const FriendsScreen = () => {
     }
   };
 
+  const handleProfilePress = (userId, username, profilePicture) => {
+    navigation.navigate('UserProfileScreen', {
+      userId: userId,
+      username: username,
+      profilePicture: profilePicture,
+    });
+  };
+
   const renderPendingRequestItem = (item) => (
     <View style={styles.requestItem} key={item._id}>
       <View style={styles.pendingItem}>
-        <Image
-          source={
-            item?.profilePicture
-              ? { uri: `${Config.API_BASE_URL}/uploads/${item.profilePicture}` }
-              : require('../../assets/images/avatar.png')
-          }
-          style={styles.profileImage}
-          onError={() => {
-            Toast.show({
-              type: 'error',
-              text1: 'Image Load Error',
-              text2: 'Unable to load profile picture.',
-            });
-          }}
-        />
-        <Text style={styles.profileName}>{item.username}</Text>
+        <TouchableOpacity
+          onPress={() => handleProfilePress(item.userId, item.username, item.profilePicture)}
+          style={styles.profileTouchable}
+        >
+          <Image
+            source={
+              item?.profilePicture
+                ? { uri: `${Config.API_BASE_URL}/uploads/${item.profilePicture}` }
+                : require('../../assets/images/avatar.png')
+            }
+            style={styles.profileImage}
+            onError={() => {
+              Toast.show({
+                type: 'error',
+                text1: 'Image Load Error',
+                text2: 'Unable to load profile picture.',
+              });
+            }}
+          />
+          <Text style={styles.profileName}>{item.username}</Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.actionButtons}>
         <TouchableOpacity
@@ -167,22 +180,27 @@ const FriendsScreen = () => {
         {allProfiles.length > 0 ? (
           allProfiles.map((profile) => (
             <View style={styles.profileItem} key={profile._id}>
-              <Image
-                                                         source={
-               profile?.profilePicture
-                 ? { uri: `${Config.API_BASE_URL}/uploads/${profile.profilePicture}` }
-                    : require('../../assets/images/avatar.png')
-                }
-                style={styles.profileImage}
-                onError={() => {
-                  Toast.show({
-                    type: 'error',
-                    text1: 'Image Load Error',
-                    text2: 'Unable to load profile picture.',
-                  });
-                }}
-              />
-              <Text style={styles.profileName}>{profile.username}</Text>
+              <TouchableOpacity
+                onPress={() => handleProfilePress(profile.userId, profile.username, profile.profilePicture)}
+                style={styles.profileTouchable}
+              >
+                <Image
+                  source={
+                    profile?.profilePicture
+                      ? { uri: `${Config.API_BASE_URL}/uploads/${profile.profilePicture}` }
+                      : require('../../assets/images/avatar.png')
+                  }
+                  style={styles.profileImage}
+                  onError={() => {
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Image Load Error',
+                      text2: 'Unable to load profile picture.',
+                    });
+                  }}
+                />
+                <Text style={styles.profileName}>{profile.username}</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.sendRequestButton}
                 onPress={() => handleSendFriendRequest(profile.userId, profile.username)}
@@ -245,8 +263,13 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 16 },
   requestItem: { padding: 12, marginBottom: 10, borderRadius: 8, backgroundColor: '#fff', elevation: 1 },
   pendingItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  profileTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   profileImage: { width: 50, height: 50, borderRadius: 25, marginRight: 10 },
-  profileName: { flex: 1, fontSize: 16, color: '#333' },
+  profileName: { fontSize: 16, color: '#333', flex: 1 },
   actionButtons: { flexDirection: 'row', justifyContent: 'space-between' },
   button: {
     flex: 0.48,
@@ -266,6 +289,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#fff',
     elevation: 1,
+    justifyContent: 'space-between',
   },
   sendRequestButton: {
     backgroundColor: '#6BAED6',
@@ -273,6 +297,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 8,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
   },
   sendRequestButtonText: { color: '#fff', fontWeight: 'bold' },
   noRequestsText: { fontSize: 16, color: '#888', textAlign: 'center', marginVertical: 10 },

@@ -176,6 +176,14 @@ const SendCapsulePage = () => {
     }
   };
 
+  const handleProfilePress = (friend) => {
+    navigation.navigate('UserProfileScreen', {
+      userId: friend._id,
+      username: friend.username,
+      profilePicture: friend.profilePicture,
+    });
+  };
+
   useEffect(() => {
     fetchFriends();
   }, []);
@@ -191,35 +199,44 @@ const SendCapsulePage = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Select Friends to Send Capsule</Text>
+      <Text style={styles.title}>Select Friends to Share With</Text>
+
       {friends.length === 0 ? (
         <View style={styles.noFriendsContainer}>
-          <Text style={styles.noFriendsText}>No friends found. Add friends to send capsules!</Text>
+          <Text style={styles.noFriendsText}>
+            You don't have any friends to share this capsule with.
+          </Text>
         </View>
       ) : (
         <ScrollView>
           {friends.map((friend) => (
-            <TouchableOpacity
-              key={friend._id}
-              style={[
-                styles.friendContainer,
-                selectedFriends.includes(friend._id) && styles.selectedFriendContainer,
-              ]}
-              onPress={() => handleSelectFriend(friend._id)}
-              disabled={isSendingCapsule}
-            >
-              <Image
-                source={{ uri: `${Config.API_BASE_URL}/uploads/${friend.profilePicture}` }}
-                style={styles.profilePic}
-              />
-              <Text style={styles.friendName}>{friend.username}</Text>
-              <RadioButton
-                value={friend._id}
-                status={selectedFriends.includes(friend._id) ? 'checked' : 'unchecked'}
+            <View key={friend._id} style={styles.friendContainer}>
+              <TouchableOpacity
+                style={styles.profileSection}
+                onPress={() => handleProfilePress(friend)}
+              >
+                <Image
+                  source={{ uri: `${Config.API_BASE_URL}/uploads/${friend.profilePicture}` }}
+                  style={styles.profilePic}
+                />
+                <Text style={styles.friendName}>{friend.username}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.selectButton,
+                  selectedFriends.includes(friend._id) && styles.selectedButton,
+                ]}
                 onPress={() => handleSelectFriend(friend._id)}
                 disabled={isSendingCapsule}
-              />
-            </TouchableOpacity>
+              >
+                <RadioButton
+                  value={friend._id}
+                  status={selectedFriends.includes(friend._id) ? 'checked' : 'unchecked'}
+                  onPress={() => handleSelectFriend(friend._id)}
+                  disabled={isSendingCapsule}
+                />
+              </TouchableOpacity>
+            </View>
           ))}
         </ScrollView>
       )}
@@ -277,10 +294,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
-  selectedFriendContainer: {
-    backgroundColor: '#e0f7fa',
-    borderColor: '#26c6da',
-  },
   profilePic: {
     width: 50,
     height: 50,
@@ -322,6 +335,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  selectButton: {
+    padding: 10,
+  },
+  selectedButton: {
+    backgroundColor: '#26c6da',
   },
 });
 
