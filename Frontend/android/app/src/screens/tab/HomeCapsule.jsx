@@ -611,89 +611,122 @@ const CapsulePage = () => {
   };
 
   const renderCapsule = ({ item }) => {
-
     return (
-    <View style={styles.capsuleContainer}>
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>{item.Title}</Text>
-        <FontAwesome
-          name={item.Status === 'Locked' ? 'lock' : 'unlock'}
-          size={24}
-          color={item.Status === 'Locked' ? THEME.error : THEME.primary}
-        />
-      </View>
-
-                 {/* Emotional Connection Button */}
-         {item.Description && item.Description.trim() !== '' && (
-           <TouchableOpacity
-             style={[styles.emotionalConnectionButton, { backgroundColor: THEME.secondary }]}
-             onPress={() => handleEmotionalConnectionPress(item)}
-           >
-             <MaterialIcons name="chat" size={16} color="white" />
-             <Text style={styles.emotionalConnectionText}>💬 Emotional Connection</Text>
-           </TouchableOpacity>
-         )}
-
-         {/* Capsule Type - Clickable for Shared capsules */}
-         {(item.IsShared || item.CapsuleType === 'Shared') ? (
-           <TouchableOpacity 
-             style={[styles.capsuleTypeContainer, styles.clickableCapsuleType]}
-             onPress={() => handleSharedTypePress(item)}
-           >
-             <MaterialIcons name="folder" size={16} color="#666" />
-             <Text style={styles.capsuleTypeText}>
-               {getSharedCapsuleLabel(item)}
-             </Text>
-             <MaterialIcons name="chevron-right" size={16} color="#666" />
-           </TouchableOpacity>
-         ) : (
-           <View style={styles.capsuleTypeContainer}>
-             <MaterialIcons name="folder" size={16} color="#666" />
-             <Text style={styles.capsuleTypeText}>
-               {getSharedCapsuleLabel(item)}
-             </Text>
-           </View>
-         )}
-
-
-      
-      {item.Media && (
-        <View style={styles.mediaTypeContainer}>
-          <MaterialIcons
-            name={
-              getMediaType(item.Media) === 'image'
-                ? 'photo'
-                : getMediaType(item.Media) === 'video'
-                ? 'videocam'
-                : getMediaType(item.Media) === 'audio'
-                ? 'audiotrack'
-                : 'insert-drive-file'
-            }
-            size={16}
-            color="#666"
+      <View style={styles.capsuleContainer}>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{item.Title}</Text>
+          <FontAwesome
+            name={item.Status === 'Locked' ? 'lock' : 'unlock'}
+            size={24}
+            color={item.Status === 'Locked' ? THEME.error : THEME.primary}
           />
-          <Text style={styles.mediaTypeText}>
-            {getMediaType(item.Media).charAt(0).toUpperCase() + 
-             getMediaType(item.Media).slice(1)} File
-          </Text>
         </View>
-      )}
 
-      {item.Status === 'Open' ? (
-        <TouchableOpacity
-          style={[styles.viewButton, { backgroundColor: THEME.primary }]}
-          onPress={() => setSelectedMedia(item.Media)}
-        >
-          <Text style={styles.buttonText}>View Capsule Media</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={[styles.viewButton2, { backgroundColor: THEME.error }]}>
-          <Text style={styles.buttonText}>
-            Unlock Date: {moment(item.UnlockDate).format('YYYY-MM-DD')}
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
+        {/* Emotional Connection Button */}
+        {item.Description && item.Description.trim() !== '' && (
+          <TouchableOpacity
+            style={[styles.emotionalConnectionButton, { backgroundColor: THEME.secondary }]}
+            onPress={() => handleEmotionalConnectionPress(item)}
+          >
+            <MaterialIcons name="chat" size={16} color="white" />
+            <Text style={styles.emotionalConnectionText}>💬 Emotional Connection</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Capsule Type - Clickable for Shared capsules */}
+        {(item.IsShared || item.CapsuleType === 'Shared') ? (
+          <TouchableOpacity 
+            style={[styles.capsuleTypeContainer, styles.clickableCapsuleType]}
+            onPress={() => handleSharedTypePress(item)}
+          >
+            <MaterialIcons name="folder" size={16} color="#666" />
+            <Text style={styles.capsuleTypeText}>
+              {getSharedCapsuleLabel(item)}
+            </Text>
+            <MaterialIcons name="chevron-right" size={16} color="#666" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.capsuleTypeContainer}>
+            <MaterialIcons name="folder" size={16} color="#666" />
+            <Text style={styles.capsuleTypeText}>
+              {getSharedCapsuleLabel(item)}
+            </Text>
+          </View>
+        )}
+
+        {/* Nested Capsules */}
+        {item.NestedCapsules && item.NestedCapsules.length > 0 && (
+          <View style={styles.nestedCapsulesContainer}>
+            <Text style={styles.nestedCapsulesTitle}>Nested Capsules ({item.NestedCapsules.length})</Text>
+            {item.NestedCapsules.map((nestedCapsule, index) => (
+              <View key={nestedCapsule._id || index} style={styles.nestedCapsuleItem}>
+                <View style={styles.nestedCapsuleHeader}>
+                  <Text style={styles.nestedCapsuleTitle}>{nestedCapsule.Title}</Text>
+                  <FontAwesome
+                    name={nestedCapsule.Status === 'Locked' ? 'lock' : 'unlock'}
+                    size={16}
+                    color={nestedCapsule.Status === 'Locked' ? THEME.error : THEME.primary}
+                  />
+                </View>
+                {nestedCapsule.Description && (
+                  <Text style={styles.nestedCapsuleDescription}>
+                    {nestedCapsule.Description}
+                  </Text>
+                )}
+                {nestedCapsule.Status === 'Open' ? (
+                  <TouchableOpacity
+                    style={[styles.nestedCapsuleButton, { backgroundColor: THEME.primary }]}
+                    onPress={() => setSelectedMedia(nestedCapsule.Media)}
+                  >
+                    <Text style={styles.nestedCapsuleButtonText}>View Nested Capsule</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.nestedCapsuleLockedText}>
+                    Locked (unlocks with parent)
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+      
+        {item.Media && (
+          <View style={styles.mediaTypeContainer}>
+            <MaterialIcons
+              name={
+                getMediaType(item.Media) === 'image'
+                  ? 'photo'
+                  : getMediaType(item.Media) === 'video'
+                  ? 'videocam'
+                  : getMediaType(item.Media) === 'audio'
+                  ? 'audiotrack'
+                  : 'insert-drive-file'
+              }
+              size={16}
+              color="#666"
+            />
+            <Text style={styles.mediaTypeText}>
+              {getMediaType(item.Media).charAt(0).toUpperCase() + 
+               getMediaType(item.Media).slice(1)} File
+            </Text>
+          </View>
+        )}
+
+        {item.Status === 'Open' ? (
+          <TouchableOpacity
+            style={[styles.viewButton, { backgroundColor: THEME.primary }]}
+            onPress={() => setSelectedMedia(item.Media)}
+          >
+            <Text style={styles.buttonText}>View Capsule Media</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={[styles.viewButton2, { backgroundColor: THEME.error }]}>
+            <Text style={styles.buttonText}>
+              Unlock Date: {moment(item.UnlockDate).format('YYYY-MM-DD')}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     );
   };
 
@@ -1360,5 +1393,55 @@ const styles = StyleSheet.create({
   creatorName: {
     fontSize: 14,
     color: '#333',
+  },
+  nestedCapsulesContainer: {
+    marginTop: 15,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+  },
+  nestedCapsulesTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#555',
+    marginBottom: 10,
+  },
+  nestedCapsuleItem: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  nestedCapsuleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  nestedCapsuleTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  nestedCapsuleDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 10,
+  },
+  nestedCapsuleLockedText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+  },
+  nestedCapsuleButton: {
+    paddingVertical: 8,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  nestedCapsuleButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

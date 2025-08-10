@@ -12,6 +12,7 @@ import path from 'path';
 import fs from 'fs';
 import { uploadSingleFile, uploadMultipleFiles } from './middlewares/fileUploadMiddleware.js';
 import timeCapsuleRoutes from './routes/timeCapsuleRoutes.js';
+import nestedCapsuleRoutes from './routes/nestedCapsuleRoutes.js';
 
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -34,6 +35,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes); 
 app.use('/api/friends', friendRoutes);
 app.use('/api/timecapsules', timeCapsuleRoutes);
+app.use('/api/nestedcapsules', nestedCapsuleRoutes);
 
 
 // app.post('/api/timecapsules/create', (req, res) => {

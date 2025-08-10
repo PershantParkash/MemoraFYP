@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
 import axiosInstance from '../api/axiosInstance';
 
-const useCapsuleService = () => {
+const useNestedCapsuleService = () => {
   const navigation = useNavigation();
 
   const getFileType = (fileUri, mediaType) => {
@@ -13,7 +13,6 @@ const useCapsuleService = () => {
     const fileName = fileUri.split('/').pop();
     const fileExtension = fileName.split('.').pop().toLowerCase();
 
-   
     switch (mediaType) {
       case 'photo':
         if (['jpg', 'jpeg'].includes(fileExtension)) return 'image/jpeg';
@@ -35,7 +34,6 @@ const useCapsuleService = () => {
         return 'audio/aac'; 
         
       default:
-        
         if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
           return `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`;
         }
@@ -49,7 +47,7 @@ const useCapsuleService = () => {
     }
   };
 
-  const handleCreateCapsule = async (capsuleInfoOrFormData) => {
+  const handleCreateNestedCapsule = async (capsuleInfoOrFormData) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
 
@@ -73,17 +71,11 @@ const useCapsuleService = () => {
         formData = new FormData();
         formData.append('title', capsuleInfo.title);
         formData.append('description', capsuleInfo.description);
-        formData.append('unlockDate', moment(capsuleInfo.unlockDate).format('YYYY-M-D'));
         formData.append('capsuleType', capsuleInfo.capsuleType);
+        formData.append('parentCapsuleId', capsuleInfo.parentCapsuleId);
 
         if (capsuleInfo.mediaType) {
           formData.append('mediaType', capsuleInfo.mediaType);
-        }
-
-        if (capsuleInfo.capsuleType === 'Shared' && capsuleInfo.friends && capsuleInfo.friends.length > 0) {
-          capsuleInfo.friends.forEach((friendId) => {
-            formData.append('friends[]', friendId);
-          });
         }
 
         if (capsuleInfo.fileUri) {
@@ -91,13 +83,13 @@ const useCapsuleService = () => {
           const mediaType = capsuleInfo.mediaType || 'photo'; 
           const fileType = getFileType(capsuleInfo.fileUri, mediaType);
           
-          formData.append('file', {
+          formData.append('files', {
             uri: capsuleInfo.fileUri,
             name: fileName,
             type: fileType,
           });
 
-          console.log(`Uploading ${mediaType} file: ${formData}`, {
+          console.log(`Uploading ${mediaType} file:`, {
             fileName,
             fileType,
             mediaType
@@ -112,7 +104,7 @@ const useCapsuleService = () => {
         }
       }
 
-      const response = await axiosInstance.post('/api/timecapsules/create', formData, {
+      const response = await axiosInstance.post('/api/nestedcapsules/create', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -122,39 +114,35 @@ const useCapsuleService = () => {
 
       Toast.show({
         type: 'success',
-        text1: 'Capsule Created',
-        text2: 'Your time capsule has been created successfully.',
+        text1: 'Nested Capsule Created',
+        text2: 'Your nested capsule has been created successfully.',
       });
-
-     
 
       return response.data;
 
     } catch (error) {
-      console.error('Error creating capsule:', error);
+      console.error('Error creating nested capsule:', error);
       
-      let message = 'An error occurred while creating the capsule.';
+      let message = 'An error occurred while creating the nested capsule.';
       
       if (error.code === 'ECONNABORTED') {
         message = 'Upload timeout. Please check your connection and try again.';
       } else if (error.response) {
-       
         message = error.response.data?.message || `Server error: ${error.response.status}`;
       } else if (error.request) {
-       
         message = 'Network error. Please check your connection.';
       }
       
       Toast.show({
         type: 'error',
-        text1: 'Error Creating Capsule',
+        text1: 'Error Creating Nested Capsule',
         text2: message,
       });
       throw error;
     }
   };
 
-  const getUserCapsules = async () => {
+  const getNestedCapsules = async (parentCapsuleId) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       
@@ -162,25 +150,25 @@ const useCapsuleService = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axiosInstance.get('/api/timecapsules/getLoginUserCapsules', {
+      const response = await axiosInstance.get(`/api/nestedcapsules/parent/${parentCapsuleId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       
-      return response.data.capsules;
+      return response.data.data;
     } catch (error) {
-      console.error('Error fetching capsules:', error);
+      console.error('Error fetching nested capsules:', error);
       
       if (error.response?.status === 401) {
         throw new Error('Session expired. Please log in again.');
       }
       
-      throw new Error('Failed to load capsules. Please try again later.');
+      throw new Error('Failed to load nested capsules. Please try again later.');
     }
   };
 
-  const deleteCapsule = async (capsuleId) => {
+  const getAllNestedCapsules = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       
@@ -188,25 +176,30 @@ const useCapsuleService = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axiosInstance.delete(`/api/timecapsules/${capsuleId}`, {
+      const response = await axiosInstance.get('/api/nestedcapsules/all', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       
-      return response.data;
+      return response.data.data;
     } catch (error) {
-      console.error('Error deleting capsule:', error);
-      throw new Error('Failed to delete capsule. Please try again later.');
+      console.error('Error fetching all nested capsules:', error);
+      
+      if (error.response?.status === 401) {
+        throw new Error('Session expired. Please log in again.');
+      }
+      
+      throw new Error('Failed to load nested capsules. Please try again later.');
     }
   };
 
   return { 
-    handleCreateCapsule, 
-    getUserCapsules, 
-    deleteCapsule,
+    handleCreateNestedCapsule, 
+    getNestedCapsules, 
+    getAllNestedCapsules,
     getFileType 
   };
 };
 
-export default useCapsuleService;
+export default useNestedCapsuleService; 

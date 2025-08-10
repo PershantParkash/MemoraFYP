@@ -1,5 +1,6 @@
 import TimeCapsule from '../models/TimeCapsule.js'; 
 import SharedCapsule from '../models/SharedCapsule.js'
+import NestedCapsule from '../models/NestedCapsule.js';
 import mongoose from 'mongoose';
 import { Profile } from '../models/Profile.js';
 // export const createTimeCapsule = async (req, res) => {
@@ -92,9 +93,41 @@ export const getCapsules = async (req, res) => {
       };
     });
 
+    // Get nested capsules for all personal capsules
+    const personalCapsuleIds = updatedPersonalCapsules.map(capsule => capsule._id);
+    const nestedCapsules = await NestedCapsule.find({ 
+      ParentCapsuleId: { $in: personalCapsuleIds },
+      UserID: userId 
+    });
+
+    // Group nested capsules by parent capsule
+    const nestedCapsulesByParent = {};
+    nestedCapsules.forEach(nestedCapsule => {
+      const parentId = nestedCapsule.ParentCapsuleId.toString();
+      if (!nestedCapsulesByParent[parentId]) {
+        nestedCapsulesByParent[parentId] = [];
+      }
+      
+      // Check if parent capsule is unlocked to determine nested capsule status
+      const parentCapsule = updatedPersonalCapsules.find(capsule => capsule._id.toString() === parentId);
+      const nestedCapsuleData = { ...nestedCapsule._doc };
+      if (parentCapsule && new Date(parentCapsule.UnlockDate) < currentDate) {
+        nestedCapsuleData.Status = 'Open';
+      }
+      
+      nestedCapsulesByParent[parentId].push(nestedCapsuleData);
+    });
+
+    // Add nested capsules to personal capsules
+    const personalCapsulesWithNested = updatedPersonalCapsules.map(capsule => ({
+      ...capsule,
+      IsShared: false,
+      NestedCapsules: nestedCapsulesByParent[capsule._id.toString()] || []
+    }));
+
     const allCapsules = [
-      ...updatedPersonalCapsules.map(capsule => ({ ...capsule, IsShared: false })),
-      ...sharedCapsuleDetails.map(capsule => ({ ...capsule, IsShared: true })),
+      ...personalCapsulesWithNested,
+      ...sharedCapsuleDetails.map(capsule => ({ ...capsule, IsShared: true, NestedCapsules: [] })),
     ];
 
     res.status(200).json({
