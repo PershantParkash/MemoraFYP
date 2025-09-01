@@ -28,6 +28,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AudioRecord from 'react-native-audio-record';
 import {MyContext} from '../../context/MyContext';
 import { useNavigationContext } from '../../context/NavigationContext';
+import { requestLocationPermission } from '../../hooks/requestLocationPermission';
 
 let Video = null;
 let LinearGradient = null;

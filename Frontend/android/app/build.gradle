@@ -3,6 +3,7 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
 apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -87,9 +88,8 @@ android {
         versionName "1.0"
         // buildConfigField "String", "API_BASE_URL", "\"${System.getenv("API_BASE_URL") ?: "http://192.168.1.37:5000"}\""
         // buildConfigField "String", "API_BASE_URL", "\"${API_BASE_URL}\""
-
-
     }
+    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -98,6 +98,7 @@ android {
             keyPassword 'android'
         }
     }
+    
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -122,8 +123,12 @@ dependencies {
         implementation jscFlavor
     }
     
+    // Google Play Services for Location
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
+    
+    // For better location services
+    implementation 'com.google.android.gms:play-services-maps:18.2.0'
 }
 
-
-
+// // Apply vector icons configuration
 // apply from: file("../../node_modules/react-native-vector-icons/platforms/android/apply.gradle")

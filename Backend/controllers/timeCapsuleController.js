@@ -3,46 +3,6 @@ import SharedCapsule from '../models/SharedCapsule.js'
 import NestedCapsule from '../models/NestedCapsule.js';
 import mongoose from 'mongoose';
 import { Profile } from '../models/Profile.js';
-// export const createTimeCapsule = async (req, res) => {
-//   try {
-//     const { title, description, unlockDate, capsuleType, friends } = req.body;
-//     const userId = req.userId;
-//     const media = req.file.filename
-
-//     const parsedFriends = Array.isArray(friends) ? friends : JSON.parse(friends);
-//     const friendsObjectIdArray = parsedFriends.map(friend => mongoose.Types.ObjectId(friend));
-
-//     const timeCapsule = await TimeCapsule.create({
-//       Title: title,
-//       Description: description,
-//       UnlockDate: unlockDate,
-//       CapsuleType: capsuleType,
-//       Status: 'Locked',
-//       UserID: userId,
-//       Media: media,
-//     });
-
-//     if (capsuleType === 'Shared' && friends && friends.length > 0) {
-//         await SharedCapsule.create({
-//           TimeCapsuleID: timeCapsule._id,
-//           CreatedBy: userId,
-//           Friends: parsedFriends,  
-//         });
-//       }
-
-//     res.status(201).json({
-//       success: true,
-//       message: 'Time Capsule created successfully',
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: 'An error occurred while creating the Time Capsule',
-//       error: error.message,
-//     });
-//   }
-// };
-
 
 export const getCapsules = async (req, res) => {
   try {
@@ -144,7 +104,7 @@ export const getCapsules = async (req, res) => {
 };
 export const createTimeCapsule = async (req, res) => {
   try {
-    const { title, description, unlockDate, capsuleType, friends } = req.body;
+    const { title, description, unlockDate, capsuleType, friends, lat, lng } = req.body;
     const userId = req.userId;
     
     console.log('Received request:', {
@@ -152,57 +112,39 @@ export const createTimeCapsule = async (req, res) => {
       files: req.files ? req.files.map(f => ({ name: f.originalname, mimetype: f.mimetype })) : 'No files',
       file: req.file ? { name: req.file.originalname, mimetype: req.file.mimetype } : 'No single file'
     });
-    
-    // Handle multiple files upload
+
+    // Handle file uploads
     let media = null;
     let finalDescription = description;
-    
+
     if (req.files && req.files.length > 0) {
       console.log('Processing multiple files:', req.files.length);
       
-      // Find the image file (first file is typically the image)
-      const imageFile = req.files.find(file => 
-        file.mimetype.startsWith('image/')
-      );
-      
-      // Find the audio file (if any)
-      const audioFile = req.files.find(file => 
-        file.mimetype.startsWith('audio/')
-      );
-      
+      const imageFile = req.files.find(file => file.mimetype.startsWith('image/'));
+      const audioFile = req.files.find(file => file.mimetype.startsWith('audio/'));
+
       console.log('Found files:', {
         imageFile: imageFile ? { name: imageFile.originalname, mimetype: imageFile.mimetype } : null,
         audioFile: audioFile ? { name: audioFile.originalname, mimetype: audioFile.mimetype } : null
       });
-      
+
       if (imageFile) {
         media = imageFile.filename;
         console.log('Image file saved as:', media);
       }
-      
-      // If we have an audio file and the description is a local file path, 
-      // replace it with the uploaded audio filename
+
       if (audioFile && description && description.startsWith('file://')) {
         finalDescription = audioFile.filename;
         console.log('Audio file saved as description:', finalDescription);
       }
     } else if (req.file) {
-      // Fallback for single file upload
       media = req.file.filename;
       console.log('Single file saved as:', media);
     } else {
       console.log('No files found in request');
     }
 
-    console.log('Creating time capsule with:', {
-      Title: title,
-      Description: finalDescription,
-      UnlockDate: unlockDate,
-      CapsuleType: capsuleType,
-      Media: media,
-      UserID: userId
-    });
-
+    // ✅ Create new capsule with location
     const timeCapsule = await TimeCapsule.create({
       Title: title,
       Description: finalDescription,
@@ -211,10 +153,12 @@ export const createTimeCapsule = async (req, res) => {
       Status: 'Locked',
       UserID: userId,
       Media: media,
+      Lat: lat,   // 📍 Save latitude
+      Lng: lng,   // 📍 Save longitude
     });
 
+    // ✅ If capsule is shared → save in SharedCapsule collection
     if (capsuleType === 'Shared' && friends) {
-      // Ensure 'friends' is parsed correctly
       const parsedFriends = typeof friends === 'string' ? JSON.parse(friends) : friends;
       const friendsObjectIdArray = parsedFriends.map(friend => new mongoose.Types.ObjectId(friend));
 
@@ -222,16 +166,20 @@ export const createTimeCapsule = async (req, res) => {
         await SharedCapsule.create({
           TimeCapsuleID: timeCapsule._id,
           CreatedBy: userId,
-          Friends: friendsObjectIdArray, // Ensure ObjectIds are saved
+          Friends: friendsObjectIdArray,
         });
       }
     }
 
+    // ✅ Send back capsule including location
     res.status(201).json({
       success: true,
       message: 'Time Capsule created successfully',
+      capsule: timeCapsule,
     });
+
   } catch (error) {
+    console.error("Error creating time capsule:", error);
     res.status(500).json({
       success: false,
       message: 'An error occurred while creating the Time Capsule',

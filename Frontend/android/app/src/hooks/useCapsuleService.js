@@ -3,17 +3,19 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
 import axiosInstance from '../api/axiosInstance';
+import { getCurrentLocation } from './requestLocationPermission'
+import { useState } from 'react';
 
 const useCapsuleService = () => {
   const navigation = useNavigation();
-
+  const [loading, setLoading] = useState(false);
+ 
   const getFileType = (fileUri, mediaType) => {
     if (!fileUri) return null;
 
     const fileName = fileUri.split('/').pop();
     const fileExtension = fileName.split('.').pop().toLowerCase();
 
-   
     switch (mediaType) {
       case 'photo':
         if (['jpg', 'jpeg'].includes(fileExtension)) return 'image/jpeg';
@@ -35,7 +37,6 @@ const useCapsuleService = () => {
         return 'audio/aac'; 
         
       default:
-        
         if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
           return `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`;
         }
@@ -51,6 +52,7 @@ const useCapsuleService = () => {
 
   const handleCreateCapsule = async (capsuleInfoOrFormData) => {
     try {
+      setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
 
       if (!token) {
@@ -63,62 +65,88 @@ const useCapsuleService = () => {
       }
 
       let formData;
-      
-      // Check if we're receiving FormData (for multiple files) or capsuleInfo object
+
+      // Case 1: Already FormData
       if (capsuleInfoOrFormData instanceof FormData) {
         formData = capsuleInfoOrFormData;
       } else {
-        // Handle the original capsuleInfo object format
+        // Case 2: Plain object capsuleInfo
         const capsuleInfo = capsuleInfoOrFormData;
         formData = new FormData();
+
         formData.append('title', capsuleInfo.title);
-        formData.append('description', capsuleInfo.description);
-        formData.append('unlockDate', moment(capsuleInfo.unlockDate).format('YYYY-M-D'));
+        formData.append('description', capsuleInfo.description || '');
+        formData.append(
+          'unlockDate',
+          moment(capsuleInfo.unlockDate).isValid()
+            ? moment(capsuleInfo.unlockDate).toISOString()
+            : ''
+        );
         formData.append('capsuleType', capsuleInfo.capsuleType);
 
         if (capsuleInfo.mediaType) {
           formData.append('mediaType', capsuleInfo.mediaType);
         }
 
-        if (capsuleInfo.capsuleType === 'Shared' && capsuleInfo.friends && capsuleInfo.friends.length > 0) {
+        // Friends (for shared capsules)
+        if (
+          capsuleInfo.capsuleType === 'Shared' &&
+          capsuleInfo.friends &&
+          capsuleInfo.friends.length > 0
+        ) {
           capsuleInfo.friends.forEach((friendId) => {
             formData.append('friends[]', friendId);
           });
         }
 
+        // Location - Get current location SAFELY
+        try {
+          const location = await getCurrentLocation();
+          if (location && location.lat && location.lng) {
+            formData.append('lat', location.lat.toString());
+            formData.append('lng', location.lng.toString());
+            console.log('Location added to capsule:', location);
+          } else {
+            console.warn('Could not get valid location for capsule');
+          }
+        } catch (locationError) {
+          console.error('Error getting location in service:', locationError);
+          // Continue without location - it's not mandatory
+        }
+
+        // Media File (if exists)
         if (capsuleInfo.fileUri) {
           const fileName = capsuleInfo.fileUri.split('/').pop();
-          const mediaType = capsuleInfo.mediaType || 'photo'; 
-          const fileType = getFileType(capsuleInfo.fileUri, mediaType);
-          
-          formData.append('file', {
+          const fileType = getFileType(
+            capsuleInfo.fileUri,
+            capsuleInfo.mediaType || 'photo'
+          );
+
+          formData.append('files', {
             uri: capsuleInfo.fileUri,
             name: fileName,
             type: fileType,
           });
 
-          console.log(`Uploading ${mediaType} file: ${formData}`, {
+          console.log('Uploading media file:', {
             fileName,
             fileType,
-            mediaType
+            mediaType: capsuleInfo.mediaType,
           });
-        } else {
-          Toast.show({
-            type: 'error',
-            text1: 'Media Error',
-            text2: 'No valid media file provided.',
-          });
-          return;
         }
       }
 
-      const response = await axiosInstance.post('/api/timecapsules/create', formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 30000, 
-      });
+      const response = await axiosInstance.post(
+        '/api/timecapsules/create',
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+          timeout: 30000,
+        }
+      );
 
       Toast.show({
         type: 'success',
@@ -126,31 +154,32 @@ const useCapsuleService = () => {
         text2: 'Your time capsule has been created successfully.',
       });
 
-     
-
-      return response.data;
-
+      return { success: true }; 
     } catch (error) {
       console.error('Error creating capsule:', error);
       
       let message = 'An error occurred while creating the capsule.';
-      
+
       if (error.code === 'ECONNABORTED') {
         message = 'Upload timeout. Please check your connection and try again.';
       } else if (error.response) {
-       
-        message = error.response.data?.message || `Server error: ${error.response.status}`;
+        message =
+          error.response.data?.message ||
+          `Server error: ${error.response.status}`;
       } else if (error.request) {
-       
         message = 'Network error. Please check your connection.';
+      } else {
+        message = error.message || 'Unknown error occurred';
       }
-      
+
       Toast.show({
         type: 'error',
         text1: 'Error Creating Capsule',
         text2: message,
       });
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -205,7 +234,8 @@ const useCapsuleService = () => {
     handleCreateCapsule, 
     getUserCapsules, 
     deleteCapsule,
-    getFileType 
+    getFileType,
+    loading 
   };
 };
 

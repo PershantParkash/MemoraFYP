@@ -10,6 +10,7 @@ import {
   Modal,
   ScrollView,
   FlatList,
+  Linking,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -22,9 +23,10 @@ import useCapsuleService from '../hooks/useCapsuleService';
 import useNestedCapsuleService from '../hooks/useNestedCapsuleService';
 import { useNavigation } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
+import { getCurrentLocation } from '../hooks/requestLocationPermission';
 
 const CapsuleCreationScreen = () => {
-  const { handleCreateCapsule } = useCapsuleService();
+  const { handleCreateCapsule, loading } = useCapsuleService();
   const { handleCreateNestedCapsule } = useNestedCapsuleService();
   const context = useContext(MyContext);
   const { capsuleInfo, setCapsuleInfo } = context;
@@ -36,7 +38,6 @@ const CapsuleCreationScreen = () => {
   const [unlockDate, setUnlockDate] = useState(null);
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [fileUri, setFileUri] = useState(capsuleInfo?.fileUri || null);
-  const [isLoading, setIsLoading] = useState(false);
   const [friends, setFriends] = useState([]);
   const [isCheckingFriends, setIsCheckingFriends] = useState(false);
 
@@ -46,6 +47,7 @@ const CapsuleCreationScreen = () => {
   const [selectedParentCapsule, setSelectedParentCapsule] = useState(null);
   const [isParentCapsuleModalVisible, setIsParentCapsuleModalVisible] = useState(false);
   const [isLoadingParentCapsules, setIsLoadingParentCapsules] = useState(false);
+  const [location, setLocation] = useState(null);
 
   // Emotional Connection Modal States
   const [isEmotionalModalVisible, setIsEmotionalModalVisible] = useState(false);
@@ -85,7 +87,6 @@ const CapsuleCreationScreen = () => {
       });
 
       if (response.data && response.data.capsules) {
-        // Filter only personal capsules that are not shared
         const personalCapsules = response.data.capsules.filter(capsule => !capsule.IsShared);
         setParentCapsules(personalCapsules);
       } else {
@@ -202,103 +203,114 @@ const CapsuleCreationScreen = () => {
   const CreateCapsule = async () => {
     if (!validateForm()) return;
 
-    setIsLoading(true);
     try {
       // Prepare form data for file upload
       const formData = new FormData();
       
       // Add image file (required)
       if (fileUri) {
+        const fileName = fileUri.split('/').pop();
         formData.append('files', {
           uri: fileUri,
           type: 'image/jpeg',
-          name: 'capsule_image.jpg'
+          name: fileName || 'capsule_image.jpg'
         });
       } else {
-        // If no image, we need to handle this case
         console.error('No image file provided');
         Alert.alert('Error', 'Please select an image for the capsule.');
-        setIsLoading(false);
         return;
       }
       
       // Add other capsule data
       formData.append('title', title);
-      formData.append('description', description || ''); // Ensure description is never undefined
+      formData.append('description', description || '');
       formData.append('capsuleType', capsuleType);
       
       if (!isNestedCapsule) {
-        formData.append('unlockDate', unlockDate.toISOString());
+        formData.append('unlockDate', moment(unlockDate).format('YYYY-MM-DD'));
       } else {
         formData.append('parentCapsuleId', selectedParentCapsule._id);
       }
-      
-      // For shared capsules, we'll handle friend selection in SendCapsulePage
-      // So we don't need to pass friends here
 
-      console.log('FormData being sent:', {
-        title,
-        description: description || '',
-        unlockDate: isNestedCapsule ? 'N/A (Nested)' : unlockDate.toISOString(),
-        capsuleType,
-        isNestedCapsule,
-        parentCapsuleId: isNestedCapsule ? selectedParentCapsule._id : 'N/A',
-        hasImage: !!fileUri,
-        fileUri: fileUri
-      });
+      // Get and add location - SIMPLIFIED VERSION for react-native-get-location
+      try {
+        console.log('Getting current location...');
+        const currentLocation = await getCurrentLocation();
 
+        if (currentLocation && currentLocation.lat && currentLocation.lng) {
+          formData.append('lat', currentLocation.lat.toString());
+          formData.append('lng', currentLocation.lng.toString());
+          setLocation(currentLocation);
+          
+          Toast.show({
+            type: 'success',
+            text1: 'Location Found',
+            text2: `Lat: ${currentLocation.lat.toFixed(6)}, Lng: ${currentLocation.lng.toFixed(6)}`,
+          });
+          console.log('Location added to capsule:', currentLocation);
+        } else {
+          console.warn('Could not get location');
+          Toast.show({
+            type: 'info',
+            text1: 'Location Info',
+            text2: 'Proceeding without location data.',
+          });
+        }
+      } catch (locationError) {
+        console.error('Error getting location:', locationError);
+        Toast.show({
+          type: 'warning',
+          text1: 'Location Warning',
+          text2: 'Could not get location. Proceeding without location data.',
+        });
+        // Continue without location - don't block capsule creation
+      }
+
+      // Update context with capsule info
       setCapsuleInfo({
         ...capsuleInfo,
         title,
         description,
         unlockDate: isNestedCapsule ? null : unlockDate,
         capsuleType,
+        fileUri,
+        location: location,
       });
 
+      // Toast.show({
+      //   type: 'success',
+      //   text1: 'Capsule Data Prepared',
+      //   text2: 'Ready to create capsule',
+      // });
+
+      // Uncomment these when you want to actually create the capsule
       if (isNestedCapsule) {
-        // Create nested capsule
-        if (selectedParentCapsule) {
-          const response = await handleCreateNestedCapsule(formData);
-          Toast.show({
-            type: 'success',
-            text1: 'Nested Capsule Created Successfully!',
-            text2: 'Nested Capsule Created Successfully!',
-          });
-          setTimeout(() => {
-            navigation.navigate('Tab');
-          }, 500);
-        } else {
-          Alert.alert('Error', 'Please select a parent capsule for the nested capsule.');
-        }
+        const response = await handleCreateNestedCapsule(formData);
+        Toast.show({
+          type: 'success',
+          text1: 'Nested Capsule Created Successfully!',
+          text2: 'Your nested capsule has been created.',
+        });
+        setTimeout(() => {
+          navigation.navigate('Tab');
+        }, 500);
       } else if (capsuleType === 'Personal') {
-        // Create personal capsule
         const response = await handleCreateCapsule(formData);
         Toast.show({
           type: 'success',
           text1: 'Capsule Created Successfully!',
-          text2: 'Capsule Created Successfully!',
+          text2: 'Your time capsule has been created.',
         });
-     
         setTimeout(() => {
           navigation.navigate('Tab');
         }, 500);
       } else if (capsuleType === 'Shared') {
-        // For shared capsules, navigate to send page with capsule info
-        setCapsuleInfo({
-          ...capsuleInfo,
-          title,
-          description,
-          unlockDate,
-          capsuleType,
-          fileUri,
-        });
         navigation.navigate('SendCapsulePage');
       }
+
     } catch (error) {
       console.error('Capsule creation failed:', error);
       console.error('Error details:', error.response?.data || error.message);
-      console.error('Error status:', error.response?.status);
-      console.error('Error headers:', error.response?.headers);
       
       let errorMessage = 'Failed to create capsule. Try again.';
       if (error.response?.data?.message) {
@@ -308,13 +320,11 @@ const CapsuleCreationScreen = () => {
       }
       
       Alert.alert('Error', errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const isCreateButtonDisabled = () => {
-    return isLoading ||
+    return loading ||
       isCheckingFriends ||
       (capsuleType === 'Shared' && friends.length === 0) ||
       (isNestedCapsule && !selectedParentCapsule);
@@ -351,7 +361,11 @@ const CapsuleCreationScreen = () => {
               <TouchableOpacity style={styles.cancelButton} onPress={closeEmotionalModal}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={saveEmotionalConnection}>
+              <TouchableOpacity 
+                style={[styles.saveButton, !emotionalText.trim() && styles.disabledSaveButton]} 
+                onPress={saveEmotionalConnection}
+                disabled={!emotionalText.trim()}
+              >
                 <Text style={styles.saveButtonText}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -378,7 +392,10 @@ const CapsuleCreationScreen = () => {
           </View>
 
           {isLoadingParentCapsules ? (
-            <ActivityIndicator size="large" color="#6BAED6" />
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#6BAED6" />
+              <Text style={styles.loadingText}>Loading parent capsules...</Text>
+            </View>
           ) : (
             <FlatList
               data={parentCapsules}
@@ -408,12 +425,28 @@ const CapsuleCreationScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.header}>Create a Time Capsule</Text>
+     
+      {location && (
+        <Text style={styles.locationText}>
+          Location: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+        </Text>
+      )}
 
-      <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
+      <TextInput 
+        style={styles.input} 
+        placeholder="Title" 
+        value={title} 
+        onChangeText={setTitle}
+        editable={!loading}
+      />
       
-      <TouchableOpacity style={styles.emotionalButton} onPress={openEmotionalModal}>
+      <TouchableOpacity 
+        style={styles.emotionalButton} 
+        onPress={openEmotionalModal}
+        disabled={loading}
+      >
         <Ionicons name="heart-outline" size={20} color="#6BAED6" />
         <Text style={styles.emotionalButtonText}>
           {description ? 'Emotional Connection Added' : 'Add Emotional Connection'}
@@ -435,9 +468,10 @@ const CapsuleCreationScreen = () => {
                   openParentCapsuleModal();
                 } else {
                   setIsNestedCapsule(false);
+                  setSelectedParentCapsule(null);
                 }
               }}
-              disabled={isLoading || isCheckingFriends || (type === 'Nested' && isLoadingParentCapsules)}
+              disabled={loading || isCheckingFriends || (type === 'Nested' && isLoadingParentCapsules)}
             >
               <Text style={[styles.toggleButtonText, capsuleType === type && styles.activeButtonText]}>
                 {type}
@@ -466,7 +500,7 @@ const CapsuleCreationScreen = () => {
             Title: {selectedParentCapsule.Title}
           </Text>
           <Text style={styles.selectedParentCapsuleDetails}>
-           Emotional connection message: {selectedParentCapsule.Description || 'No emotional connection message'}
+            Emotional connection message: {selectedParentCapsule.Description || 'No emotional connection message'}
           </Text>
           <Text style={styles.selectedParentCapsuleDetails}>
             Unlock Date: {moment(selectedParentCapsule.UnlockDate).format('YYYY-MM-DD')}
@@ -477,7 +511,11 @@ const CapsuleCreationScreen = () => {
       {!isNestedCapsule && (
         <View style={styles.datePickerContainer}>
           <Text style={styles.label}>Unlock Date</Text>
-          <TouchableOpacity onPress={showDatePicker} style={styles.button} disabled={isLoading || isCheckingFriends}>
+          <TouchableOpacity 
+            onPress={showDatePicker} 
+            style={styles.button} 
+            disabled={loading || isCheckingFriends}
+          >
             <Text style={styles.buttonText}>
               {unlockDate ? moment(unlockDate).format('YYYY-MM-DD') : 'Select Date'}
             </Text>
@@ -490,7 +528,7 @@ const CapsuleCreationScreen = () => {
         onPress={CreateCapsule}
         disabled={isCreateButtonDisabled()}
       >
-        {isLoading ? (
+        {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color="#fff" />
             <Text style={styles.createButtonText}>Creating...</Text>
@@ -503,7 +541,7 @@ const CapsuleCreationScreen = () => {
         )}
       </TouchableOpacity>
 
-      {isLoading && (
+      {loading && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#6BAED6" />
           <Text style={styles.loadingText}>Creating your time capsule...</Text>
@@ -520,13 +558,21 @@ const CapsuleCreationScreen = () => {
 
       {renderEmotionalModal()}
       {renderParentCapsuleModal()}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', padding: 16 },
+  container: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#fff', 
+    padding: 16,
+    paddingBottom: 100 
+  },
   header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333' },
+  locationText: { fontSize: 12, color: '#666', marginBottom: 10 },
   input: {
     width: '100%', height: 50, borderColor: '#ddd', borderWidth: 1, borderRadius: 8,
     paddingHorizontal: 16, marginBottom: 12, fontSize: 16,
@@ -561,6 +607,11 @@ const styles = StyleSheet.create({
   button3: {
     position: 'absolute', bottom: 20, right: 20, backgroundColor: '#6BAED6',
     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, flexDirection: 'row',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   disabledButton: { backgroundColor: '#a0c8e0' },
   createButtonText: { color: '#fff', fontSize: 16 },
@@ -568,10 +619,9 @@ const styles = StyleSheet.create({
   loadingContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   overlay: {
     position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-    backgroundColor: "white", justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+    backgroundColor: "rgba(255, 255, 255, 0.9)", justifyContent: 'center', alignItems: 'center', zIndex: 1000,
   },
   loadingText: { marginTop: 10, fontSize: 16, color: '#333', fontWeight: '600' },
-  // Emotional Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -582,8 +632,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 20,
-    width: '80%',
-    alignItems: 'center',
+    width: '90%',
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -598,7 +648,6 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
   },
-
   textInputContainer: {
     width: '100%',
     marginBottom: 20,
@@ -653,7 +702,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 15,
     marginBottom: 15,
-    alignItems: 'center',
   },
   selectedParentCapsuleTitle: {
     fontSize: 18,
@@ -688,12 +736,6 @@ const styles = StyleSheet.create({
   parentCapsuleDate: {
     fontSize: 12,
     color: '#888',
-  },
-  noCapsulesText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#ff6b6b',
-    textAlign: 'center',
   },
 });
 

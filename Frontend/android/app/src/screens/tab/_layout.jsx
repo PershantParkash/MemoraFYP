@@ -1,17 +1,16 @@
 import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text } from 'react-native';
-// Replace Expo vector icons with react-native-vector-icons
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigationContext } from '../../context/NavigationContext';
 
 import CameraScreen from './CameraScreen';
 import FriendsScreen from './FriendsScreen';
-// import ProfileScreen from './ProfileScreen';
 import ProfileScreen from './ProfileScreen';
 import HomeCapsule from './HomeCapsule';
 import capsuleCalendar from './CapsuleCalendarPage';
+import MapScreen from './MapScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -19,7 +18,6 @@ export default function TabLayout() {
   const { initializeHistory } = useNavigationContext();
 
   useEffect(() => {
-    // Initialize navigation history when Tab layout mounts
     initializeHistory();
   }, [initializeHistory]);
 
@@ -37,6 +35,21 @@ export default function TabLayout() {
               name={focused ? 'people-sharp' : 'people-outline'} 
               color={color} 
               size={24} 
+            />
+          ),
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
+        name="MapScreen"
+        component={MapScreen}
+        options={{
+          title: 'Map',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? 'map-sharp' : 'map-outline'} 
+              color={color} 
+              size={22} 
             />
           ),
           headerShown: false,

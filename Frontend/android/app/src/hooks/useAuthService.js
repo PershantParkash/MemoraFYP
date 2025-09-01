@@ -8,7 +8,7 @@ const useAuthService = () => {
   const loginUser = async (email, password) => {
     try {
       const response = await axiosInstance.post('/api/auth/login', {
-        email: email.trim(),
+        email: email.trim(),  
         password
       }, {
         headers: {
