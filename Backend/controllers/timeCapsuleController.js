@@ -118,33 +118,35 @@ export const createTimeCapsule = async (req, res) => {
     let finalDescription = description;
 
     if (req.files && req.files.length > 0) {
-      console.log('Processing multiple files:', req.files.length);
-      
-      const imageFile = req.files.find(file => file.mimetype.startsWith('image/'));
-      const audioFile = req.files.find(file => file.mimetype.startsWith('audio/'));
+  console.log('Processing multiple files:', req.files.length);
 
-      console.log('Found files:', {
-        imageFile: imageFile ? { name: imageFile.originalname, mimetype: imageFile.mimetype } : null,
-        audioFile: audioFile ? { name: audioFile.originalname, mimetype: audioFile.mimetype } : null
-      });
+  const imageFile = req.files.find(file => file.mimetype.startsWith('image/'));
+  const audioFile = req.files.find(file => file.mimetype.startsWith('audio/'));
+  const videoFile = req.files.find(file => file.mimetype.startsWith('video/'));
 
-      if (imageFile) {
-        media = imageFile.filename;
-        console.log('Image file saved as:', media);
-      }
+  console.log('Found files:', {
+    imageFile: imageFile ? { name: imageFile.originalname, mimetype: imageFile.mimetype } : null,
+    audioFile: audioFile ? { name: audioFile.originalname, mimetype: audioFile.mimetype } : null,
+    videoFile: videoFile ? { name: videoFile.originalname, mimetype: videoFile.mimetype } : null,
+  });
 
-      if (audioFile && description && description.startsWith('file://')) {
-        finalDescription = audioFile.filename;
-        console.log('Audio file saved as description:', finalDescription);
-      }
-    } else if (req.file) {
-      media = req.file.filename;
-      console.log('Single file saved as:', media);
-    } else {
-      console.log('No files found in request');
-    }
+  if (imageFile) {
+    media = imageFile.filename;
+    console.log('Image file saved as:', media);
+  } else if (audioFile) {
+    media = audioFile.filename;
+    console.log('Audio file saved as:', media);
+  } else if (videoFile) {
+    media = videoFile.filename;
+    console.log('Video file saved as:', media);
+  }
+} else if (req.file) {
+  media = req.file.filename;
+  console.log('Single file saved as:', media);
+} else {
+  console.log('No files found in request');
+}
 
-    // ✅ Create new capsule with location
     const timeCapsule = await TimeCapsule.create({
       Title: title,
       Description: finalDescription,
@@ -188,4 +190,51 @@ export const createTimeCapsule = async (req, res) => {
   }
 };
 
+export const getPublicCapsules = async (req, res) => {
+  try {
+    const currentDate = new Date();
+
+    // Find all capsules with CapsuleType = "Public"
+    const publicCapsules = await TimeCapsule.find({ CapsuleType: 'Public' })
+      .populate({ path: 'UserID', model: 'User' });
+
+    // Get all unique creator IDs
+    const creatorIds = [...new Set(publicCapsules.map(capsule => capsule.UserID._id))];
+
+    // Fetch profiles for all creators
+    const creatorProfiles = await Profile.find({ userId: { $in: creatorIds } });
+
+    // Create a quick lookup map
+    const profileMap = {};
+    creatorProfiles.forEach(profile => {
+      profileMap[profile.userId.toString()] = profile;
+    });
+
+    // Update capsule status (Locked → Open if unlock date has passed)
+    const updatedCapsules = publicCapsules.map(capsule => {
+      const capsuleData = { ...capsule._doc };
+      if (new Date(capsule.UnlockDate) < currentDate) {
+        capsuleData.Status = 'Open';
+      }
+      return {
+        ...capsuleData,
+        CreatedBy: capsule.UserID, // full user info
+        CreatorProfile: profileMap[capsule.UserID._id.toString()] || null, // profile info
+        IsShared: false,
+        NestedCapsules: [], // public capsules won’t have nested ones
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      capsules: updatedCapsules,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred while fetching public capsules',
+      error: error.message,
+    });
+  }
+};
 

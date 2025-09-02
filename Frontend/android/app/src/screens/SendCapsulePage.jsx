@@ -20,7 +20,7 @@ import Config from 'react-native-config';
 
 const SendCapsulePage = () => {
   const context = useContext(MyContext);
-  const { handleCreateCapsule } = useCapsuleService();
+  const { handleCreateCapsule, getFileType } = useCapsuleService();
   const { capsuleInfo, setCapsuleInfo } = context;
 
   const [title, setTitle] = useState(capsuleInfo.title);
@@ -131,14 +131,34 @@ const SendCapsulePage = () => {
       formData.append('unlockDate', unlockDate.toISOString());
       formData.append('capsuleType', 'Shared');
       
-      // Add image file
-      if (fileUri) {
-        formData.append('files', {
-          uri: fileUri,
-          type: 'image/jpeg',
-          name: 'capsule_image.jpg'
-        });
-      }
+      // // Add image file
+      // if (fileUri) {
+      //   formData.append('files', {
+      //     uri: fileUri,
+      //     type: 'image/jpeg',
+      //     name: 'capsule_image.jpg'
+      //   });
+      // }
+      if (capsuleInfo.fileUri) {
+  const fileName = capsuleInfo.fileUri.split('/').pop();
+  const fileType = getFileType(
+    capsuleInfo.fileUri,
+    capsuleInfo.mediaType || 'photo' // fallback to photo if not provided
+  );
+
+  formData.append('files', {
+    uri: capsuleInfo.fileUri,
+    name: fileName || 'uploaded_file',
+    type: fileType,
+  });
+
+ 
+} else {
+  console.error('No file provided');
+  Alert.alert('Error', 'Please select a file for the capsule.');
+  return;
+}
+
       
       // Add selected friends
       selectedFriends.forEach(friendId => {

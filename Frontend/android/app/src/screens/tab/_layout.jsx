@@ -4,7 +4,7 @@ import { View, Text } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigationContext } from '../../context/NavigationContext';
-
+import CommunityHomeCapsule from './CommunityHomeCapsule';
 import CameraScreen from './CameraScreen';
 import FriendsScreen from './FriendsScreen';
 import ProfileScreen from './ProfileScreen';
@@ -88,7 +88,22 @@ export default function TabLayout() {
         }}
       />
 
-      <Tab.Screen
+<Tab.Screen
+        name="CommunityHomeCapsule"
+        component={CommunityHomeCapsule}
+        options={{
+          title: 'Capsules',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons 
+              name={focused ? 'timer-sand' : 'timer-sand-empty'} 
+              color={color} 
+              size={22} 
+            />
+          ),
+          headerShown: false,
+        }}
+      />
+      {/* <Tab.Screen
         name="HomeCapsule"
         component={HomeCapsule}
         options={{
@@ -102,7 +117,7 @@ export default function TabLayout() {
           ),
           headerShown: false,
         }}
-      />
+      /> */}
 
       <Tab.Screen
         name="profile"

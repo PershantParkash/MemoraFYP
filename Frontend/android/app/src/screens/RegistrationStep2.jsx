@@ -31,15 +31,45 @@ const RegistrationStep2 = () => {
   const [showPicker, setShowPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Error states for each field
+  const [profilePicError, setProfilePicError] = useState('');
+  const [cnicError, setCnicError] = useState('');
+  const [contactNoError, setContactNoError] = useState('');
+  const [dobError, setDobError] = useState('');
+  const [genderError, setGenderError] = useState('');
+  const [addressError, setAddressError] = useState('');
+
   const navigation = useNavigation();
   const route = useRoute();
   const { fullName, email, password } = route.params || {};
+
+  // Clear error functions
+  const handleCnicChange = (text) => {
+    setCnic(text);
+    if (cnicError) setCnicError('');
+  };
+
+  const handleContactChange = (text) => {
+    setContactNo(text);
+    if (contactNoError) setContactNoError('');
+  };
+
+  const handleAddressChange = (text) => {
+    setAddress(text);
+    if (addressError) setAddressError('');
+  };
+
+  const handleGenderChange = (value) => {
+    setGender(value);
+    if (genderError) setGenderError('');
+  };
 
   const handleDateChange = (event, selectedDate) => {
     setShowPicker(false);
     if (selectedDate) {
       const formattedDate = selectedDate.toISOString().split('T')[0];
       setDob(formattedDate);
+      if (dobError) setDobError('');
     }
   };
 
@@ -66,6 +96,7 @@ const RegistrationStep2 = () => {
         });
       } else if (response.assets && response.assets[0]) {
         setProfilePic(response.assets[0].uri);
+        if (profilePicError) setProfilePicError('');
         Toast.show({
           type: 'success',
           text1: 'Image Selected',
@@ -85,71 +116,59 @@ const RegistrationStep2 = () => {
   };
 
   const validateFields = () => {
-     if (!profilePic) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please select your profile picture.',
-      });
-      return false;
+    let isValid = true;
+    
+    // Reset all errors
+    setProfilePicError('');
+    setCnicError('');
+    setContactNoError('');
+    setDobError('');
+    setGenderError('');
+    setAddressError('');
+
+    // Profile picture validation
+    if (!profilePic) {
+      setProfilePicError('Please select your profile picture.');
+      isValid = false;
     }
+
+    // CNIC validation
     if (!cnic.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter your CNIC.',
-      });
-      return false;
+      setCnicError('Please enter your CNIC.');
+      isValid = false;
+    } else if (!/^\d{13}$/.test(cnic)) {
+      setCnicError('CNIC must be exactly 13 digits.');
+      isValid = false;
     }
-    if (!/^\d{13}$/.test(cnic)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid CNIC',
-        text2: 'CNIC must be exactly 13 digits.',
-      });
-      return false;
-    }
+
+    // Contact number validation
     if (!contactNo.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter your contact number.',
-      });
-      return false;
+      setContactNoError('Please enter your contact number.');
+      isValid = false;
+    } else if (!/^\d{10,12}$/.test(contactNo)) {
+      setContactNoError('Contact number must be between 10-12 digits.');
+      isValid = false;
     }
-    if (!/^\d{10,12}$/.test(contactNo)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Contact Number',
-        text2: 'Contact number must be between 10-12 digits.',
-      });
-      return false;
-    }
+
+    // Date of birth validation
     if (!dob.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please select your date of birth.',
-      });
-      return false;
+      setDobError('Please select your date of birth.');
+      isValid = false;
     }
+
+    // Gender validation
     if (!gender) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please select your gender.',
-      });
-      return false;
+      setGenderError('Please select your gender.');
+      isValid = false;
     }
+
+    // Address validation
     if (!address.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter your address.',
-      });
-      return false;
+      setAddressError('Please enter your address.');
+      isValid = false;
     }
-    return true;
+
+    return isValid;
   };
 
   const handleSubmit = async () => {
@@ -177,7 +196,6 @@ const RegistrationStep2 = () => {
           text1: 'Registration Successful! 🎉',
           text2: 'Your profile has been created successfully.',
         });
-        
         
         setTimeout(() => {
           navigation.navigate('Tab');
@@ -225,49 +243,73 @@ const RegistrationStep2 = () => {
             </View>
           ) : (
             <TouchableOpacity style={styles.profileButton} onPress={handlePickImage}>
-              <View style={styles.profileImagePlaceholder}>
+              <View style={[
+                styles.profileImagePlaceholder,
+                profilePicError ? styles.profileImageError : null
+              ]}>
                 <Icon name="person" size={40} color="#A0A0A0" />
               </View>
               <Text style={styles.profileButtonText}>Add Profile Picture</Text>
             </TouchableOpacity>
           )}
+          {profilePicError ? (
+            <Text style={styles.errorText}>{profilePicError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>CNIC Number</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              cnicError ? styles.inputError : null
+            ]}
             placeholder="Enter 13-digit CNIC"
             placeholderTextColor="#A9A9A9"
             keyboardType="numeric"
             maxLength={13}
             value={cnic}
-            onChangeText={setCnic}
+            onChangeText={handleCnicChange}
           />
+          {cnicError ? (
+            <Text style={styles.errorText}>{cnicError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Contact Number</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              contactNoError ? styles.inputError : null
+            ]}
             placeholder="Enter contact number"
             placeholderTextColor="#A9A9A9"
             keyboardType="phone-pad"
             value={contactNo}
-            onChangeText={setContactNo}
+            onChangeText={handleContactChange}
           />
+          {contactNoError ? (
+            <Text style={styles.errorText}>{contactNoError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Date of Birth</Text>
           <TouchableOpacity
-            style={styles.datePickerButton}
+            style={[
+              styles.datePickerButton,
+              dobError ? styles.inputError : null
+            ]}
             onPress={() => setShowPicker(true)}
           >
             <Text style={dob ? styles.dateText : styles.placeholderText}>
               {dob || 'Select date of birth'}
             </Text>
           </TouchableOpacity>
+          {dobError ? (
+            <Text style={styles.errorText}>{dobError}</Text>
+          ) : null}
           {showPicker && (
             <DateTimePicker
               value={dob ? new Date(dob) : new Date()}
@@ -281,10 +323,13 @@ const RegistrationStep2 = () => {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Gender</Text>
-          <View style={styles.pickerContainer}>
+          <View style={[
+            styles.pickerContainer,
+            genderError ? styles.inputError : null
+          ]}>
             <Picker
               selectedValue={gender}
-              onValueChange={(itemValue) => setGender(itemValue)}
+              onValueChange={handleGenderChange}
               style={styles.picker}
             >
               <Picker.Item label="Select gender" value="" color="#A9A9A9" />
@@ -293,18 +338,28 @@ const RegistrationStep2 = () => {
               <Picker.Item label="Other" value="other" />
             </Picker>
           </View>
+          {genderError ? (
+            <Text style={styles.errorText}>{genderError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Address</Text>
           <TextInput
-            style={[styles.input, styles.addressInput]}
+            style={[
+              styles.input, 
+              styles.addressInput,
+              addressError ? styles.inputError : null
+            ]}
             placeholder="Enter your full address"
             placeholderTextColor="#A9A9A9"
             value={address}
-            onChangeText={setAddress}
+            onChangeText={handleAddressChange}
             multiline
           />
+          {addressError ? (
+            <Text style={styles.errorText}>{addressError}</Text>
+          ) : null}
         </View>
 
         <TouchableOpacity
@@ -331,7 +386,6 @@ const RegistrationStep2 = () => {
         </TouchableOpacity>
       </ScrollView>
 
-       
       <Toast />
     </View>
   );
@@ -409,6 +463,11 @@ const styles = StyleSheet.create({
     borderColor: '#2E86C1',
     borderStyle: 'dashed',
   },
+  // Error style for profile image placeholder
+  profileImageError: {
+    borderColor: '#FF3B30',
+    borderStyle: 'solid',
+  },
   imageContainer: {
     alignItems: 'center',
     position: 'relative',
@@ -473,6 +532,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  // Error styles for inputs
+  inputError: {
+    borderColor: '#FF3B30',
+    borderWidth: 1,
+  },
   addressInput: {
     height: 80,
     textAlignVertical: 'top',
@@ -509,6 +573,13 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     width: '100%',
+  },
+  // Error text style
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   button: {
     width: '100%',

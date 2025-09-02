@@ -230,10 +230,37 @@ const useCapsuleService = () => {
     }
   };
 
+  const getPublicCapsules = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axiosInstance.get('/api/timecapsules/getPublicCapsule', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      return response.data.capsules;
+    } catch (error) {
+      console.error('Error fetching capsules:', error);
+      
+      if (error.response?.status === 401) {
+        throw new Error('Session expired. Please log in again.');
+      }
+      
+      throw new Error('Failed to load capsules. Please try again later.');
+    }
+  };
+
   return { 
     handleCreateCapsule, 
     getUserCapsules, 
     deleteCapsule,
+    getPublicCapsules,
     getFileType,
     loading 
   };

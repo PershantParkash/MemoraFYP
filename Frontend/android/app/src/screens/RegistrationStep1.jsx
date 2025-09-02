@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import Toast from 'react-native-toast-message'; // ✅ Toast Import
+import Toast from 'react-native-toast-message';
 
 const { height } = Dimensions.get('window');
 
@@ -22,86 +22,95 @@ const RegistrationStep1 = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Error states for each field
+  const [fullNameError, setFullNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  
   const navigation = useNavigation();
 
+  // Clear error when user starts typing
+  const handleFullNameChange = (text) => {
+    setFullName(text);
+    if (fullNameError) setFullNameError('');
+  };
+
+  const handleEmailChange = (text) => {
+    setEmail(text);
+    if (emailError) setEmailError('');
+  };
+
+  const handlePasswordChange = (text) => {
+    setPassword(text);
+    if (passwordError) setPasswordError('');
+  };
+
+  const handleConfirmPasswordChange = (text) => {
+    setConfirmPassword(text);
+    if (confirmPasswordError) setConfirmPasswordError('');
+  };
+
   const validateFields = () => {
+    let isValid = true;
+    
+    // Reset all errors
+    setFullNameError('');
+    setEmailError('');
+    setPasswordError('');
+    setConfirmPasswordError('');
+
+    // Full Name validation
     if (!fullName.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Full Name is required.',
-      });
-      return false;
+      setFullNameError('Full Name is required.');
+      isValid = false;
     }
 
+    // Email validation
     if (!email.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Email is required.',
-      });
-      return false;
+      setEmailError('Email is required.');
+      isValid = false;
+    } else {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|szabist\.pk|hotmail\.com)$/;
+      if (!emailRegex.test(email)) {
+        setEmailError('Only Gmail, Yahoo, Hotmail, or szabist.pk domains are allowed.');
+        isValid = false;
+      }
     }
 
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|szabist\.pk|hotmail\.com)$/;
-
-    if (!emailRegex.test(email)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Only selected domains are allowed: Gmail, Yahoo, Hotmail, or szabist.pk.',
-      });
-      return false;
-    }
+    // Password validation
     if (!password) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Password is required.',
-      });
-      return false;
+      setPasswordError('Password is required.');
+      isValid = false;
+    } else if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters.');
+      isValid = false;
     }
 
-    if (password.length < 6) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Password must be at least 6 characters.',
-      });
-      return false;
-    }
-
+    // Confirm Password validation
     if (!confirmPassword) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Confirm Password is required.',
-      });
-      return false;
+      setConfirmPasswordError('Confirm Password is required.');
+      isValid = false;
+    } else if (confirmPassword !== password) {
+      setConfirmPasswordError('Passwords do not match.');
+      isValid = false;
     }
 
-    if (confirmPassword !== password) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Passwords do not match.',
-      });
-      return false;
-    }
-
-    return true;
+    return isValid;
   };
 
   const handleRegister = () => {
-    if (!validateFields()) return;
-
+    // Validate all fields first
+    if (!validateFields()) {
+      return;
+    }
 
     Toast.show({
       type: 'success',
       text1: 'Validation Passed',
       text2: 'Proceeding to Step 2...',
     });
-
 
     setTimeout(() => {
       navigation.navigate('RegistrationStep2', { fullName, email, password });
@@ -128,37 +137,52 @@ const RegistrationStep1 = () => {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Full Name</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              fullNameError ? styles.inputError : null
+            ]}
             placeholder="Enter your full name"
             placeholderTextColor="#A9A9A9"
             value={fullName}
-            onChangeText={setFullName}
+            onChangeText={handleFullNameChange}
           />
+          {fullNameError ? (
+            <Text style={styles.errorText}>{fullNameError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email Address</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              emailError ? styles.inputError : null
+            ]}
             placeholder="Enter your email"
             placeholderTextColor="#A9A9A9"
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={handleEmailChange}
           />
+          {emailError ? (
+            <Text style={styles.errorText}>{emailError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password</Text>
-          <View style={styles.passwordContainer}>
+          <View style={[
+            styles.passwordContainer,
+            passwordError ? styles.passwordContainerError : null
+          ]}>
             <TextInput
               style={styles.passwordInput}
               placeholder="Create a password"
               placeholderTextColor="#A9A9A9"
               secureTextEntry={!showPassword}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={handlePasswordChange}
             />
             <TouchableOpacity
               style={styles.eyeButton}
@@ -171,18 +195,24 @@ const RegistrationStep1 = () => {
               />
             </TouchableOpacity>
           </View>
+          {passwordError ? (
+            <Text style={styles.errorText}>{passwordError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.passwordContainer}>
+          <View style={[
+            styles.passwordContainer,
+            confirmPasswordError ? styles.passwordContainerError : null
+          ]}>
             <TextInput
               style={styles.passwordInput}
               placeholder="Confirm your password"
               placeholderTextColor="#A9A9A9"
               secureTextEntry={!showConfirmPassword}
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={handleConfirmPasswordChange}
             />
             <TouchableOpacity
               style={styles.eyeButton}
@@ -195,6 +225,9 @@ const RegistrationStep1 = () => {
               />
             </TouchableOpacity>
           </View>
+          {confirmPasswordError ? (
+            <Text style={styles.errorText}>{confirmPasswordError}</Text>
+          ) : null}
         </View>
 
         <TouchableOpacity style={styles.button} onPress={handleRegister}>
@@ -289,6 +322,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  // Error styles for regular inputs
+  inputError: {
+    borderColor: '#FF3B30',
+    borderWidth: 1,
+  },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,6 +336,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     backgroundColor: '#F9F9F9',
+  },
+  // Error styles for password containers
+  passwordContainerError: {
+    borderColor: '#FF3B30',
+    borderWidth: 1,
   },
   passwordInput: {
     flex: 1,
@@ -310,6 +353,13 @@ const styles = StyleSheet.create({
     padding: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Error text style
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   button: {
     width: '100%',

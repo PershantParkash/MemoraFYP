@@ -26,10 +26,10 @@ import axiosInstance from '../api/axiosInstance';
 import { getCurrentLocation } from '../hooks/requestLocationPermission';
 
 const CapsuleCreationScreen = () => {
-  const { handleCreateCapsule, loading } = useCapsuleService();
+  const { handleCreateCapsule, getFileType, loading } = useCapsuleService();
   const { handleCreateNestedCapsule } = useNestedCapsuleService();
   const context = useContext(MyContext);
-  const { capsuleInfo, setCapsuleInfo } = context;
+  const { capsuleInfo, setCapsuleInfo } = context; 
   const navigation = useNavigation();
 
   const [title, setTitle] = useState('');
@@ -190,7 +190,7 @@ const CapsuleCreationScreen = () => {
       return false;
     }
     if (!fileUri) {
-      Alert.alert('Image Required', 'Please add a photo');
+      Alert.alert('File Required', 'Please add a file');
       return false;
     }
     if (capsuleType === 'Shared' && friends.length === 0) {
@@ -207,19 +207,43 @@ const CapsuleCreationScreen = () => {
       // Prepare form data for file upload
       const formData = new FormData();
       
-      // Add image file (required)
-      if (fileUri) {
-        const fileName = fileUri.split('/').pop();
-        formData.append('files', {
-          uri: fileUri,
-          type: 'image/jpeg',
-          name: fileName || 'capsule_image.jpg'
-        });
-      } else {
-        console.error('No image file provided');
-        Alert.alert('Error', 'Please select an image for the capsule.');
-        return;
-      }
+if (capsuleInfo.fileUri) {
+  const fileName = capsuleInfo.fileUri.split('/').pop();
+  const fileType = getFileType(
+    capsuleInfo.fileUri,
+    capsuleInfo.mediaType || 'photo' // fallback to photo if not provided
+  );
+
+  formData.append('files', {
+    uri: capsuleInfo.fileUri,
+    name: fileName || 'uploaded_file',
+    type: fileType,
+  });
+
+  console.log('Uploading media file:', {
+    fileName,
+    fileType,
+    mediaType: capsuleInfo.mediaType,
+  });
+} else {
+  console.error('No file provided');
+  Alert.alert('Error', 'Please select a file for the capsule.');
+  return;
+}
+
+      // if (fileUri) {
+      //   const fileName = fileUri.split('/').pop();
+      //   formData.append('files', {
+      //     uri: fileUri,
+      //     type: 'image/jpeg',
+      //     name: fileName || 'capsule_image.jpg'
+      //   });
+      // } 
+      // else {
+      //   console.error('No image file provided');
+      //   Alert.alert('Error', 'Please select an image for the capsule.');
+      //   return;
+      // }
       
       // Add other capsule data
       formData.append('title', title);
@@ -294,7 +318,7 @@ const CapsuleCreationScreen = () => {
         setTimeout(() => {
           navigation.navigate('Tab');
         }, 500);
-      } else if (capsuleType === 'Personal') {
+      } else if (capsuleType === 'Personal' || capsuleType === 'Public' ) {
         const response = await handleCreateCapsule(formData);
         Toast.show({
           type: 'success',
@@ -454,10 +478,10 @@ const CapsuleCreationScreen = () => {
         {description && <Ionicons name="checkmark-circle" size={20} color="#52C41A" />}
       </TouchableOpacity>
 
-      <View style={styles.picker}>
+      {/* <View style={styles.picker}>
         <Text style={styles.label}>Capsule Type</Text>
         <View style={styles.toggleContainer}>
-          {['Personal', 'Shared', 'Nested'].map((type) => (
+          {['Personal', 'Shared', 'Nested', 'Public'].map((type) => (
             <TouchableOpacity
               key={type}
               style={[styles.toggleButton, capsuleType === type && styles.activeButton]}
@@ -491,7 +515,46 @@ const CapsuleCreationScreen = () => {
         {isNestedCapsule && !isLoadingParentCapsules && parentCapsules.length === 0 && (
           <Text style={styles.noCapsulesText}>No personal capsules found to nest under.</Text>
         )}
-      </View>
+      </View> */}
+      <View style={styles.picker}>
+  <Text style={styles.label}>Capsule Type</Text>
+  <View style={styles.toggleContainer}>
+    {['Personal', 'Shared', 'Nested', 'Public'].map((type) => (
+      <TouchableOpacity
+        key={type}
+        style={[
+          styles.toggleButton,
+          capsuleType === type && styles.activeButton,
+        ]}
+        onPress={() => {
+          setCapsuleType(type);
+          if (type === 'Nested') {
+            setIsNestedCapsule(true);
+            openParentCapsuleModal();
+          } else {
+            setIsNestedCapsule(false);
+            setSelectedParentCapsule(null);
+          }
+        }}
+        disabled={
+          loading ||
+          isCheckingFriends ||
+          (type === 'Nested' && isLoadingParentCapsules)
+        }
+      >
+        <Text
+          style={[
+            styles.toggleButtonText,
+            capsuleType === type && styles.activeButtonText,
+          ]}
+        >
+          {type}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+</View>
+
 
       {isNestedCapsule && selectedParentCapsule && (
         <View style={styles.selectedParentCapsuleInfo}>
@@ -585,16 +648,39 @@ const styles = StyleSheet.create({
   emotionalButtonText: {
     flex: 1, marginLeft: 10, fontSize: 16, color: '#333',
   },
-  picker: { width: '100%', marginBottom: 12 },
+  picker: { width: '100%', marginBottom: 12,},
   label: { fontSize: 16, fontWeight: 'bold', marginBottom: 8, color: '#333' },
-  toggleContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-  toggleButton: {
-    flex: 1, paddingVertical: 12, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#f0f0f0', borderRadius: 8,
-  },
-  activeButton: { backgroundColor: '#6BAED6' },
-  toggleButtonText: { fontSize: 16, color: '#333' },
-  activeButtonText: { color: '#fff', fontWeight: 'bold' },
+  // toggleContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+  // toggleButton: {
+  //   flex: 1, paddingVertical: 12, justifyContent: 'center', alignItems: 'center',
+  //   backgroundColor: '#f0f0f0', borderRadius: 8,
+  // },
+  // activeButton: { backgroundColor: '#6BAED6' },
+  // toggleButtonText: { fontSize: 16, color: '#333' },
+  // activeButtonText: { color: '#fff', fontWeight: 'bold' },
+  toggleContainer: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',         // ✅ allows wrapping to next row
+  justifyContent: 'space-between',
+  gap: 10,                  // space between buttons
+},
+toggleButton: {
+  flexBasis: '48%',         // ✅ ensures 2 buttons per row
+  paddingVertical: 12,
+  borderRadius: 8,
+  backgroundColor: '#eee',
+  alignItems: 'center',
+},
+activeButton: {
+  backgroundColor: '#42A7C3',
+},
+toggleButtonText: {
+  color: '#333',
+  fontWeight: '500',
+},
+activeButtonText: {
+  color: '#fff',
+},
   checkingText: { marginTop: 8, fontSize: 14, color: '#6BAED6', textAlign: 'center' },
   noFriendsText: { marginTop: 8, fontSize: 14, color: '#ff6b6b', textAlign: 'center' },
   noCapsulesText: { marginTop: 10, fontSize: 14, color: '#ff6b6b', textAlign: 'center' },
