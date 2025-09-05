@@ -8,7 +8,7 @@ import CommunityHomeCapsule from './CommunityHomeCapsule';
 import CameraScreen from './CameraScreen';
 import FriendsScreen from './FriendsScreen';
 import ProfileScreen from './ProfileScreen';
-import HomeCapsule from './HomeCapsule';
+import HomeCapsule from '../HomeCapsule';
 import capsuleCalendar from './CapsuleCalendarPage';
 import MapScreen from './MapScreen';
 

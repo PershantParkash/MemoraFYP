@@ -11,6 +11,10 @@ import {
   Dimensions,
   Modal,
   ScrollView,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import Config from 'react-native-config';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -22,6 +26,7 @@ import { useNavigationContext } from '../../context/NavigationContext';
 import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native'; 
 
 let Video = null;
 let LinearGradient = null;
@@ -49,8 +54,10 @@ const THEME = {
   error: '#FF4444',
   success: '#52C41A',
   warning: '#FAAD14',
-  community: '#8B5CF6', // Purple for community theme
+  community: '#8B5CF6',
   communityDark: '#7C3AED',
+  like: '#FF3040',
+  comment: '#4A90E2',
 };
 
 const FallbackGradient = ({ children, style, colors }) => (
@@ -69,6 +76,17 @@ const CommunityHomeCapsule = () => {
   const [currentUserId, setCurrentUserId] = useState(null);
   const { addToHistory } = useNavigationContext();
   
+  const navigation = useNavigation();
+  // Comments and Likes states
+  const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
+  const [selectedCapsule, setSelectedCapsule] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [loadingLike, setLoadingLike] = useState({});
+  const [commentPage, setCommentPage] = useState(1);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
+  
   // Use custom back button handler
   useBackButtonHandler();
   
@@ -86,12 +104,11 @@ const CommunityHomeCapsule = () => {
   const [videoDuration, setVideoDuration] = useState(0);
   const [audioProgress, setAudioProgress] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+  const [sortOrder, setSortOrder] = useState('desc');
 
   // Modal states
   const [isEmotionalConnectionModalVisible, setIsEmotionalConnectionModalVisible] = useState(false);
   const [isCreatorProfileModalVisible, setIsCreatorProfileModalVisible] = useState(false);
-  const [selectedCapsule, setSelectedCapsule] = useState(null);
 
   const waveAnimation = useRef(new Animated.Value(1)).current;
   const videoRef = useRef(null);
@@ -118,6 +135,141 @@ const CommunityHomeCapsule = () => {
         throw new Error('Session expired. Please log in again.');
       }
       throw new Error('Failed to load capsules. Please try again later.');
+    }
+  };
+
+  // Toggle like for a capsule
+  const toggleLike = async (capsuleId) => {
+    try {
+      setLoadingLike(prev => ({ ...prev, [capsuleId]: true }));
+      
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axiosInstance.post(
+        `/api/likes/toggle/${capsuleId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update the capsule in the local state
+      setCapsules(prevCapsules => 
+        prevCapsules.map(capsule => 
+          capsule._id === capsuleId
+            ? {
+                ...capsule,
+                IsLikedByUser: response.data.isLiked,
+                LikesCount: response.data.isLiked 
+                  ? (capsule.LikesCount || 0) + 1
+                  : Math.max((capsule.LikesCount || 0) - 1, 0)
+              }
+            : capsule
+        )
+      );
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      Alert.alert('Error', 'Failed to update like. Please try again.');
+    } finally {
+      setLoadingLike(prev => ({ ...prev, [capsuleId]: false }));
+    }
+  };
+
+  // Get comments for a capsule
+  const getComments = async (capsuleId, page = 1) => {
+    try {
+      setLoadingComments(true);
+      
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axiosInstance.get(
+        `/api/comments/${capsuleId}?page=${page}&limit=10`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const { comments, pagination } = response.data;
+      
+      if (page === 1) {
+        setComments(comments);
+      } else {
+        setComments(prev => [...prev, ...comments]);
+      }
+      
+      setHasMoreComments(pagination.hasNextPage);
+      setCommentPage(page);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      Alert.alert('Error', 'Failed to load comments. Please try again.');
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  // Add a comment
+  const addComment = async () => {
+    if (!newComment.trim()) return;
+
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axiosInstance.post(
+        `/api/comments/${selectedCapsule._id}`,
+        { content: newComment.trim() },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Add the new comment to the beginning of the list
+      setComments(prev => [response.data.comment, ...prev]);
+      setNewComment('');
+
+      // Update the comments count in the capsule
+      setCapsules(prevCapsules => 
+        prevCapsules.map(capsule => 
+          capsule._id === selectedCapsule._id
+            ? { ...capsule, CommentsCount: (capsule.CommentsCount || 0) + 1 }
+            : capsule
+        )
+      );
+
+      // Update selected capsule
+      setSelectedCapsule(prev => ({
+        ...prev,
+        CommentsCount: (prev.CommentsCount || 0) + 1
+      }));
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      Alert.alert('Error', 'Failed to add comment. Please try again.');
+    }
+  };
+
+  // Open comments modal
+  const openCommentsModal = (capsule) => {
+    setSelectedCapsule(capsule);
+    setIsCommentsModalVisible(true);
+    getComments(capsule._id, 1);
+  };
+
+  // Close comments modal
+  const closeCommentsModal = () => {
+    setIsCommentsModalVisible(false);
+    setSelectedCapsule(null);
+    setComments([]);
+    setNewComment('');
+    setCommentPage(1);
+    setHasMoreComments(false);
+  };
+
+  // Load more comments
+  const loadMoreComments = () => {
+    if (hasMoreComments && !loadingComments && selectedCapsule) {
+      getComments(selectedCapsule._id, commentPage + 1);
     }
   };
 
@@ -427,7 +579,11 @@ const CommunityHomeCapsule = () => {
   };
 
   const renderCapsule = ({ item }) => {
-    const isOwnCapsule = currentUserId && item.CreatedBy === currentUserId;
+    const isOwnCapsule = currentUserId && item.CreatedBy && item.CreatedBy._id === currentUserId;
+
+  //    const HomeScreen = () => {
+  //   navigation.navigate('Home');
+  // };
     
     return (
       <View style={styles.capsuleContainer}>
@@ -529,6 +685,55 @@ const CommunityHomeCapsule = () => {
           </View>
         )}
 
+        {/* Likes and Comments Section */}
+        <View style={styles.interactionSection}>
+          <View style={styles.interactionStats}>
+            <View style={styles.statItem}>
+              <FontAwesome name="heart" size={16} color={THEME.like} />
+              <Text style={styles.statText}>{item.LikesCount || 0} likes</Text>
+            </View>
+            <View style={styles.statItem}>
+              <MaterialIcons name="comment" size={16} color={THEME.comment} />
+              <Text style={styles.statText}>{item.CommentsCount || 0} comments</Text>
+            </View>
+          </View>
+
+          <View style={styles.interactionButtons}>
+            <TouchableOpacity
+              style={[
+                styles.interactionButton,
+                item.IsLikedByUser && styles.likedButton
+              ]}
+              onPress={() => toggleLike(item._id)}
+              disabled={loadingLike[item._id]}
+            >
+              {loadingLike[item._id] ? (
+                <ActivityIndicator size="small" color={THEME.like} />
+              ) : (
+                <FontAwesome 
+                  name={item.IsLikedByUser ? "heart" : "heart-o"} 
+                  size={18} 
+                  color={item.IsLikedByUser ? THEME.like : "#666"} 
+                />
+              )}
+              <Text style={[
+                styles.interactionButtonText,
+                item.IsLikedByUser && styles.likedButtonText
+              ]}>
+                {item.IsLikedByUser ? 'Liked' : 'Like'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.interactionButton}
+              onPress={() => openCommentsModal(item)}
+            >
+              <MaterialIcons name="comment" size={18} color="#666" />
+              <Text style={styles.interactionButtonText}>Comment</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Action Button */}
         {item.Status === 'Open' ? (
           <TouchableOpacity
@@ -549,6 +754,106 @@ const CommunityHomeCapsule = () => {
       </View>
     );
   };
+
+  // Comments Modal
+  const renderCommentsModal = () => (
+    <Modal
+      visible={isCommentsModalVisible}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={closeCommentsModal}
+    >
+      <KeyboardAvoidingView 
+        style={styles.commentsModalContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* Header */}
+        <View style={styles.commentsHeader}>
+          <TouchableOpacity onPress={closeCommentsModal}>
+            <MaterialIcons name="arrow-back" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.commentsTitle}>
+            Comments ({selectedCapsule?.CommentsCount || 0})
+          </Text>
+          <View style={{ width: 24 }} />
+        </View>
+
+        {/* Comments List */}
+        <FlatList
+          data={comments}
+          keyExtractor={(item) => item._id}
+          renderItem={renderComment}
+          contentContainerStyle={styles.commentsListContainer}
+          refreshing={loadingComments && commentPage === 1}
+          onRefresh={() => selectedCapsule && getComments(selectedCapsule._id, 1)}
+          onEndReached={loadMoreComments}
+          onEndReachedThreshold={0.1}
+          ListFooterComponent={() => 
+            loadingComments && commentPage > 1 ? (
+              <ActivityIndicator size="small" color={THEME.community} style={{ padding: 20 }} />
+            ) : null
+          }
+          ListEmptyComponent={() => (
+            <View style={styles.emptyCommentsContainer}>
+              <MaterialIcons name="comment" size={50} color="#ccc" />
+              <Text style={styles.emptyCommentsText}>No comments yet</Text>
+              <Text style={styles.emptyCommentsSubText}>Be the first to share your thoughts! {selectedCapsule._id}</Text>
+            </View>
+          )}
+        />
+
+        {/* Comment Input */}
+        <View style={styles.commentInputContainer}>
+          <TextInput
+            style={styles.commentInput}
+            placeholder="Write a comment..."
+            value={newComment}
+            onChangeText={setNewComment}
+            maxLength={1000}
+            multiline
+            numberOfLines={3}
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              { opacity: newComment.trim() ? 1 : 0.5 }
+            ]}
+            onPress={addComment}
+            disabled={!newComment.trim()}
+          >
+            <MaterialIcons name="send" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+
+  // Render individual comment
+  const renderComment = ({ item }) => (
+    <View style={styles.commentItem}>
+      <View style={styles.commentHeader}>
+        {item.UserProfile?.profilePicture ? (
+          <Image 
+            source={{ uri: `${Config.API_BASE_URL}/uploads/${item.UserProfile.profilePicture}` }}
+            style={styles.commentUserPic}
+          />
+        ) : (
+          <View style={styles.defaultCommentUserPic}>
+            <MaterialIcons name="person" size={20} color="#666" />
+          </View>
+        )}
+        <View style={styles.commentUserInfo}>
+          <Text style={styles.commentUsername}>
+            {item.UserProfile?.username || 'Anonymous'}
+          </Text>
+          <Text style={styles.commentDate}>
+            {moment(item.CreatedAt).fromNow()}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.commentContent}>{item.Content}</Text>
+    </View>
+  );
 
   // Emotional Connection Modal
   const renderEmotionalConnectionModal = () => (
@@ -650,6 +955,19 @@ const CommunityHomeCapsule = () => {
             onPress={() => {
               setLoading(true);
               setCapsules([]);
+              // Retry fetching capsules
+              const fetchPublicCapsules = async () => {
+                try {
+                  const data = await getPublicCapsules();
+                  setCapsules(data);
+                  setError(null);
+                } catch (error) {
+                  setError(error.message);
+                } finally {
+                  setLoading(false);
+                }
+              };
+              fetchPublicCapsules();
             }}
           >
             <Text style={styles.buttonText}>Retry</Text>
@@ -687,6 +1005,7 @@ const CommunityHomeCapsule = () => {
           try {
             const data = await getPublicCapsules();
             setCapsules(data);
+            setError(null);
           } catch (error) {
             setError(error.message);
           } finally {
@@ -722,6 +1041,9 @@ const CommunityHomeCapsule = () => {
                 <Text style={styles.subHeaderText}>
                   Discover and explore public memories shared by the community.
                 </Text>
+                <Text style={styles.subHeaderText} onPress={()=> {  navigation.navigate('Home'); }}>
+                 View Your Capsules
+                </Text>
               </View>
               <View style={{ marginLeft: 10, minWidth: 40, minHeight: 40, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 8, overflow: 'hidden', backgroundColor: THEME.communityDark }}>
                 <Picker
@@ -734,9 +1056,6 @@ const CommunityHomeCapsule = () => {
                   <Picker.Item label="Newest First" value="desc" color="#000" />
                   <Picker.Item label="Oldest First" value="asc" color="#000" />
                 </Picker>
-                {/* <View style={{ position: 'absolute', left: 0, top: 0, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
-                  <MaterialIcons name={sortOrder === 'asc' ? 'arrow-upward' : 'arrow-downward'} size={24} color="#fff" />
-                </View> */}
               </View>
             </View>
           </GradientComponent>
@@ -748,6 +1067,7 @@ const CommunityHomeCapsule = () => {
       {/* Modals */}
       {renderEmotionalConnectionModal()}
       {renderCreatorProfileModal()}
+      {renderCommentsModal()}
     </View>
   );
 };
@@ -903,6 +1223,57 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 5,
   },
+
+  // Interaction Styles
+  interactionSection: {
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  interactionStats: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginBottom: 10,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  statText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 5,
+  },
+  interactionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  interactionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: '#f8f9fa',
+  },
+  likedButton: {
+    backgroundColor: '#ffe6e6',
+  },
+  interactionButtonText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 5,
+    fontWeight: '500',
+  },
+  likedButtonText: {
+    color: THEME.like,
+  },
+
   viewButton: {
     flexDirection: 'row',
     paddingVertical: 12,
@@ -915,6 +1286,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 3,
     elevation: 2,
+    marginTop: 10,
   },
   lockedButton: {
     flexDirection: 'row',
@@ -924,6 +1296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     opacity: 0.7,
+    marginTop: 10,
   },
   buttonText: {
     color: '#fff',
@@ -1128,6 +1501,120 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontSize: 14,
     color: '#777',
+    textAlign: 'center',
+  },
+
+  // Comments Modal Styles
+  commentsModalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  commentsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  commentsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  commentsListContainer: {
+    padding: 15,
+  },
+  commentItem: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  commentUserPic: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginRight: 10,
+  },
+  defaultCommentUserPic: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  commentUserInfo: {
+    flex: 1,
+  },
+  commentUsername: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  commentDate: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  commentContent: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 20,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  commentInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    maxHeight: 100,
+    fontSize: 14,
+    marginRight: 10,
+    backgroundColor: '#f8f9fa',
+  },
+  sendButton: {
+    backgroundColor: THEME.community,
+    borderRadius: 20,
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyCommentsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 50,
+  },
+  emptyCommentsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#666',
+    marginTop: 15,
+  },
+  emptyCommentsSubText: {
+    fontSize: 14,
+    color: '#888',
+    marginTop: 5,
     textAlign: 'center',
   },
   

@@ -3,6 +3,9 @@ import SharedCapsule from '../models/SharedCapsule.js'
 import NestedCapsule from '../models/NestedCapsule.js';
 import mongoose from 'mongoose';
 import { Profile } from '../models/Profile.js';
+import Like from '../models/Like.js';
+import Comment from '../models/Comment.js';
+
 
 export const getCapsules = async (req, res) => {
   try {
@@ -193,6 +196,7 @@ export const createTimeCapsule = async (req, res) => {
 export const getPublicCapsules = async (req, res) => {
   try {
     const currentDate = new Date();
+    const userId = req.userId; // From auth middleware
 
     // Find all capsules with CapsuleType = "Public"
     const publicCapsules = await TimeCapsule.find({ CapsuleType: 'Public' })
@@ -204,24 +208,66 @@ export const getPublicCapsules = async (req, res) => {
     // Fetch profiles for all creators
     const creatorProfiles = await Profile.find({ userId: { $in: creatorIds } });
 
-    // Create a quick lookup map
+    // Get capsule IDs for likes and comments aggregation
+    const capsuleIds = publicCapsules.map(capsule => capsule._id);
+
+    // Get likes count for each capsule
+    const likesAggregation = await Like.aggregate([
+      { $match: { TimeCapsuleID: { $in: capsuleIds } } },
+      { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
+    ]);
+
+    // Get comments count for each capsule
+    const commentsAggregation = await Comment.aggregate([
+      { $match: { TimeCapsuleID: { $in: capsuleIds } } },
+      { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
+    ]);
+
+    // Get user's likes for these capsules
+    const userLikes = await Like.find({
+      UserID: userId,
+      TimeCapsuleID: { $in: capsuleIds }
+    });
+
+    // Create lookup maps
     const profileMap = {};
     creatorProfiles.forEach(profile => {
       profileMap[profile.userId.toString()] = profile;
     });
 
-    // Update capsule status (Locked → Open if unlock date has passed)
+    const likesCountMap = {};
+    likesAggregation.forEach(like => {
+      likesCountMap[like._id.toString()] = like.count;
+    });
+
+    const commentsCountMap = {};
+    commentsAggregation.forEach(comment => {
+      commentsCountMap[comment._id.toString()] = comment.count;
+    });
+
+    const userLikesMap = {};
+    userLikes.forEach(like => {
+      userLikesMap[like.TimeCapsuleID.toString()] = true;
+    });
+
+    // Update capsule status and add interaction data
     const updatedCapsules = publicCapsules.map(capsule => {
       const capsuleData = { ...capsule._doc };
       if (new Date(capsule.UnlockDate) < currentDate) {
         capsuleData.Status = 'Open';
       }
+      
+      const capsuleId = capsule._id.toString();
+      
       return {
         ...capsuleData,
         CreatedBy: capsule.UserID, // full user info
         CreatorProfile: profileMap[capsule.UserID._id.toString()] || null, // profile info
         IsShared: false,
-        NestedCapsules: [], // public capsules won’t have nested ones
+        NestedCapsules: [], // public capsules won't have nested ones
+        LikesCount: likesCountMap[capsuleId] || 0,
+        CommentsCount: commentsCountMap[capsuleId] || 0,
+        IsLikedByUser: userLikesMap[capsuleId] || false
       };
     });
 
@@ -238,3 +284,78 @@ export const getPublicCapsules = async (req, res) => {
   }
 };
 
+// You can also create a separate function to get capsule details with interactions
+// export const getCapsuleDetails = async (req, res) => {
+//   try {
+//     const { capsuleId } = req.params;
+//     const userId = req.userId;
+
+//     // Validate ObjectId
+//     if (!mongoose.Types.ObjectId.isValid(capsuleId)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Invalid capsule ID'
+//       });
+//     }
+
+//     // Get the capsule
+//     const capsule = await TimeCapsule.findById(capsuleId)
+//       .populate('UserID', 'email');
+
+//     if (!capsule) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Capsule not found'
+//       });
+//     }
+
+//     // Get creator profile
+//     const creatorProfile = await Profile.findOne({ userId: capsule.UserID._id });
+
+//     // Get likes count and check if user liked it
+//     const [likesCount, userLike, commentsCount] = await Promise.all([
+//       Like.countDocuments({ TimeCapsuleID: capsuleId }),
+//       Like.findOne({ UserID: userId, TimeCapsuleID: capsuleId }),
+//       Comment.countDocuments({ TimeCapsuleID: capsuleId })
+//     ]);
+
+//     // Get recent comments (last 5)
+//     const recentComments = await Comment.find({ TimeCapsuleID: capsuleId })
+//       .populate('UserID', 'email')
+//       .sort({ CreatedAt: -1 })
+//       .limit(5);
+
+//     // Get profiles for comment authors
+//     const commentUserIds = recentComments.map(comment => comment.UserID._id);
+//     const commentProfiles = await Profile.find({ userId: { $in: commentUserIds } });
+    
+//     const commentProfileMap = {};
+//     commentProfiles.forEach(profile => {
+//       commentProfileMap[profile.userId.toString()] = profile;
+//     });
+
+//     const commentsWithProfiles = recentComments.map(comment => ({
+//       ...comment._doc,
+//       UserProfile: commentProfileMap[comment.UserID._id.toString()] || null
+//     }));
+
+//     res.status(200).json({
+//       success: true,
+//       capsule: {
+//         ...capsule._doc,
+//         CreatorProfile: creatorProfile,
+//         LikesCount: likesCount,
+//         CommentsCount: commentsCount,
+//         IsLikedByUser: !!userLike,
+//         RecentComments: commentsWithProfiles
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Error fetching capsule details:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'An error occurred while fetching capsule details',
+//       error: error.message
+//     });
+//   }
+// };

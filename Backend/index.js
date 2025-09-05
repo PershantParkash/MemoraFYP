@@ -6,6 +6,9 @@ import authRoutes from './routes/authRoutes.js';
 import cors from 'cors';
 import friendRoutes from './routes/friendRoutes.js';
 import profileRoutes from './routes/profileRoutes.js'
+import likesRoutes from './routes/likesRoutes.js';
+import commentsRoutes from './routes/commentsRoutes.js';
+
 // import fileUploadMiddleware from './middlewares/fileUploadMiddleware.js';
 import multer from 'multer';
 import path from 'path';
@@ -36,7 +39,8 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/timecapsules', timeCapsuleRoutes);
 app.use('/api/nestedcapsules', nestedCapsuleRoutes);
-
+app.use('/api/likes', likesRoutes);
+app.use('/api/comments', commentsRoutes);
 
 // app.post('/api/timecapsules/create', (req, res) => {
 //     console.log('Request Body:', req.body); 

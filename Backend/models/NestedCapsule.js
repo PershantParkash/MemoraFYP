@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const NestedCapsuleSchema = new mongoose.Schema({
   Title: { type: String, required: true },
   Description: { type: String },
-  CapsuleType: { type: String, enum: ['Personal', 'Shared','Nested'], required: true },
+  CapsuleType: { type: String, enum: ['Personal', 'Shared', 'Public'], required: true },
   Status: { type: String, enum: ['Open', 'Locked'], required: true },
   UserID: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   Media: { type: String, required: true },
