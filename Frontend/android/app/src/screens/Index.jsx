@@ -19,185 +19,12 @@ import { useNavigationContext } from '../context/NavigationContext';
 import { useFocusEffect } from '@react-navigation/native';
 const { height } = Dimensions.get('window');
 
-// const LoginScreen = () => {
-//   const [email, setEmail] = useState('');
-//   const [password, setPassword] = useState('');
-//   const [showPassword, setShowPassword] = useState(false);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const navigation = useNavigation();
-//   const { loginUser, saveLoginSession } = useAuthService();
-//   const { addToHistory } = useNavigationContext();
-  
-//   // Use custom back button handler
-//   useBackButtonHandler();
-  
-//   // Track navigation history
-//   useFocusEffect(
-//     React.useCallback(() => {
-//       addToHistory('Index');
-//     }, [addToHistory])
-//   );
-
-//   const togglePasswordVisibility = () => {
-//     setShowPassword(!showPassword);
-//   };
-
-//   const handleLogin = async () => {
-//     if (!email && !password) {
-//       Toast.show({
-//         type: 'error',
-//         text1: 'Login Error',
-//         text2: 'Please enter your email and password.',
-//       });
-//       return;
-//     }
-//     if (!email) {
-//       Toast.show({
-//         type: 'error',
-//         text1: 'Login Error',
-//         text2: 'Please enter your email address.',
-//       });
-//       return;
-//     }
-//     const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|szabist\.pk|hotmail\.com)$/;
-
-//     if (!emailRegex.test(email)) {
-//       Toast.show({
-//         type: 'error',
-//         text1: 'Validation Error',
-//         text2: 'Only selected domains are allowed: Gmail, Yahoo, Hotmail, or szabist.pk.',
-//       });
-//       return;
-//     }
-//     if (!password) {
-//       Toast.show({
-//         type: 'error',
-//         text1: 'Login Error',
-//         text2: 'Please enter your password.',
-//       });
-//       return;
-//     }
-//     setIsLoading(true);
-//     try {
-//       const result = await loginUser(email, password);
-
-//       if (result.success) {
-//         // Save complete session data
-//         await saveLoginSession(result.token, email);
-        
-//         Toast.show({
-//           type: 'success',
-//           text1: 'Login Successful!',
-//           text2: 'Welcome back to MemoryCapsule!',
-//         });
-
-//         setTimeout(() => {
-//         navigation.navigate('Tab');
-//       }, 500);
-
-//       } else {
-//         Toast.show({
-//           type: 'error',
-//           text1: 'Login Failed',
-//           text2: result.message,
-//         });
-//       }
-//     } catch (error) {
-//       Toast.show({
-//         type: 'error',
-//         text1: 'Login Failed',
-//         text2: 'An unexpected error occurred. Please try again.',
-//       });
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <View style={styles.logoContainer}>
-//         <Image
-//           source={require('../assets/images/logo.png')}
-//           style={styles.logo}
-//         />
-//         <Text style={styles.tagline}>Capture Moments. Revisit Memories.</Text>
-//       </View>
-
-//       <View style={styles.formContainer}>
-//         <Text style={styles.welcomeText}>Welcome Back</Text>
-//         <Text style={styles.subtitle}>Sign in to continue your journey</Text>
-
-//         <View style={styles.inputContainer}>
-//           <Text style={styles.label}>Email</Text>
-//           <TextInput
-//             style={styles.input}
-//             placeholder="Enter your email"
-//             placeholderTextColor="#A9A9A9"
-//             keyboardType="email-address"
-//             autoCapitalize="none"
-//             value={email}
-//             onChangeText={setEmail}
-//           />
-//         </View>
-
-//         <View style={styles.inputContainer}>
-//           <Text style={styles.label}>Password</Text>
-//           <View style={styles.passwordContainer}>
-//             <TextInput
-//               style={styles.passwordInput}
-//               placeholder="Enter your password"
-//               placeholderTextColor="#A9A9A9"
-//               secureTextEntry={!showPassword}
-//               value={password}
-//               onChangeText={setPassword}
-//             />
-//             <TouchableOpacity
-//               style={styles.eyeButton}
-//               onPress={togglePasswordVisibility}>
-//               <Ionicons
-//                 name={showPassword ? 'eye-off' : 'eye'}
-//                 size={24}
-//                 color="#555"
-//               />
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-
-//         <TouchableOpacity
-//           style={styles.button}
-//           onPress={handleLogin}
-//           disabled={isLoading}>
-//           <Text style={styles.buttonText}>
-//             {isLoading ? 'Logging in...' : 'Log In'}
-//           </Text>
-//         </TouchableOpacity>
-
-//         <View style={styles.divider}>
-//           <View style={styles.line} />
-//           <Text style={styles.orText}>OR</Text>
-//           <View style={styles.line} />
-//         </View>
-
-//         <TouchableOpacity
-//           style={styles.signupButton}
-//           onPress={() => {
-//             navigation.navigate('RegistrationStep1');
-//           }}
-         
-//         >
-//           <Text style={styles.signupButtonText}>Create New Account</Text>
-//         </TouchableOpacity>
-//       </View>
-//     </View>
-//   );
-// };
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Error states for each field
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   
@@ -205,7 +32,6 @@ const LoginScreen = () => {
   const { loginUser, saveLoginSession } = useAuthService();
   const { addToHistory } = useNavigationContext();
   
-  // Use custom back button handler
   useBackButtonHandler();
   
   // Track navigation history

@@ -157,9 +157,12 @@ const UserProfileScreen = () => {
         text1: 'Friend Request Accepted',
         text2: 'You are now friends! 🎉',
       });
-      
+
+       setTimeout(() => {
+          navigation.navigate('Tab');
+        }, 500);
       // Navigate back or update UI
-      navigation.goBack();
+      // navigation.goBack();
     } catch (error) {
       Toast.show({
         type: 'error',
@@ -182,7 +185,9 @@ const UserProfileScreen = () => {
       });
       
       // Navigate back or update UI
-      navigation.goBack();
+      setTimeout(() => {
+          navigation.navigate('Tab');
+        }, 500);
     } catch (error) {
       Toast.show({
         type: 'error',
@@ -203,6 +208,9 @@ const UserProfileScreen = () => {
         text1: 'Friend Request Sent',
         text2: `Request sent to ${profileData?.username} successfully!`,
       });
+       setTimeout(() => {
+          navigation.navigate('Tab');
+        }, 500);
     } catch (error) {
       Toast.show({
         type: 'error',

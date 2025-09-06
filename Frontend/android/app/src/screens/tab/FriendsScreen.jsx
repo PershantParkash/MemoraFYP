@@ -9,13 +9,12 @@ import {
   Image,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import useFriendService from '../../hooks/useFriendService'; 
 import Config from 'react-native-config';
 import useBackButtonHandler from '../../hooks/useBackButtonHandler';
 import { useNavigationContext } from '../../context/NavigationContext';
-import { useFocusEffect } from '@react-navigation/native';
 
 const FriendsScreen = () => {
   const navigation = useNavigation();
@@ -24,13 +23,6 @@ const FriendsScreen = () => {
   // Use custom back button handler
   useBackButtonHandler();
   
-  // Track navigation history
-  useFocusEffect(
-    React.useCallback(() => {
-      addToHistory('friends');
-    }, [addToHistory])
-  );
-  
   const {
     allProfiles,
     pendingRequestsProfile,
@@ -38,7 +30,18 @@ const FriendsScreen = () => {
     handleAcceptRequest,
     handleDeclineRequest,
     sendFriendRequest,
+    refreshData, // Make sure this function is available from the hook
   } = useFriendService();
+
+  // Refresh data every time the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      addToHistory('friends');
+      
+      // Refresh friend requests and find friends data
+      refreshData();
+    }, [addToHistory])
+  );
 
   const handleAcceptFriendRequest = async (userId) => {
     try {

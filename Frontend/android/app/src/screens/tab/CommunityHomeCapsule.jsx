@@ -652,7 +652,7 @@ const CommunityHomeCapsule = () => {
         </View>
 
         {/* Unlock Date */}
-        <View style={styles.dateContainer}>
+        {/* <View style={styles.dateContainer}>
           <MaterialIcons name="lock-clock" size={16} color="#666" />
           <Text style={styles.dateText}>
             {item.Status === 'Open' 
@@ -660,7 +660,7 @@ const CommunityHomeCapsule = () => {
               : `Unlocks: ${moment(item.UnlockDate).format('MMM DD, YYYY')}`
             }
           </Text>
-        </View>
+        </View> */}
 
         {/* Media Type Indicator */}
         {item.Media && (
@@ -744,12 +744,14 @@ const CommunityHomeCapsule = () => {
             <Text style={styles.buttonText}>View Capsule Media</Text>
           </TouchableOpacity>
         ) : (
-          <View style={[styles.lockedButton, { backgroundColor: THEME.error }]}>
+          <TouchableOpacity style={[styles.lockedButton, { backgroundColor: THEME.error }]} 
+          //  onPress={() => setSelectedMedia(item.Media)}
+           >
             <MaterialIcons name="lock" size={20} color="white" />
             <Text style={styles.buttonText}>
               Unlocks: {moment(item.UnlockDate).format('MMM DD, YYYY')}
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       </View>
     );

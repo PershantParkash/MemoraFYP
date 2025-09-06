@@ -93,9 +93,58 @@ export const getCapsules = async (req, res) => {
       ...sharedCapsuleDetails.map(capsule => ({ ...capsule, IsShared: true, NestedCapsules: [] })),
     ];
 
+    // Get all capsule IDs for likes and comments aggregation
+    const capsuleIds = allCapsules.map(capsule => capsule._id);
+
+    // Get likes count for each capsule
+    const likesAggregation = await Like.aggregate([
+      { $match: { TimeCapsuleID: { $in: capsuleIds } } },
+      { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
+    ]);
+
+    // Get comments count for each capsule
+    const commentsAggregation = await Comment.aggregate([
+      { $match: { TimeCapsuleID: { $in: capsuleIds } } },
+      { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
+    ]);
+
+    // Get user's likes for these capsules
+    const userLikes = await Like.find({
+      UserID: userId,
+      TimeCapsuleID: { $in: capsuleIds }
+    });
+
+    // Create lookup maps
+    const likesCountMap = {};
+    likesAggregation.forEach(like => {
+      likesCountMap[like._id.toString()] = like.count;
+    });
+
+    const commentsCountMap = {};
+    commentsAggregation.forEach(comment => {
+      commentsCountMap[comment._id.toString()] = comment.count;
+    });
+
+    const userLikesMap = {};
+    userLikes.forEach(like => {
+      userLikesMap[like.TimeCapsuleID.toString()] = true;
+    });
+
+    // Add likes and comments data to all capsules
+    const finalCapsules = allCapsules.map(capsule => {
+      const capsuleId = capsule._id.toString();
+      
+      return {
+        ...capsule,
+        LikesCount: likesCountMap[capsuleId] || 0,
+        CommentsCount: commentsCountMap[capsuleId] || 0,
+        IsLikedByUser: userLikesMap[capsuleId] || false
+      };
+    });
+
     res.status(200).json({
       success: true,
-      capsules: allCapsules,
+      capsules: finalCapsules,
     });
   } catch (error) {
     res.status(500).json({
@@ -283,79 +332,3 @@ export const getPublicCapsules = async (req, res) => {
     });
   }
 };
-
-// You can also create a separate function to get capsule details with interactions
-// export const getCapsuleDetails = async (req, res) => {
-//   try {
-//     const { capsuleId } = req.params;
-//     const userId = req.userId;
-
-//     // Validate ObjectId
-//     if (!mongoose.Types.ObjectId.isValid(capsuleId)) {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Invalid capsule ID'
-//       });
-//     }
-
-//     // Get the capsule
-//     const capsule = await TimeCapsule.findById(capsuleId)
-//       .populate('UserID', 'email');
-
-//     if (!capsule) {
-//       return res.status(404).json({
-//         success: false,
-//         message: 'Capsule not found'
-//       });
-//     }
-
-//     // Get creator profile
-//     const creatorProfile = await Profile.findOne({ userId: capsule.UserID._id });
-
-//     // Get likes count and check if user liked it
-//     const [likesCount, userLike, commentsCount] = await Promise.all([
-//       Like.countDocuments({ TimeCapsuleID: capsuleId }),
-//       Like.findOne({ UserID: userId, TimeCapsuleID: capsuleId }),
-//       Comment.countDocuments({ TimeCapsuleID: capsuleId })
-//     ]);
-
-//     // Get recent comments (last 5)
-//     const recentComments = await Comment.find({ TimeCapsuleID: capsuleId })
-//       .populate('UserID', 'email')
-//       .sort({ CreatedAt: -1 })
-//       .limit(5);
-
-//     // Get profiles for comment authors
-//     const commentUserIds = recentComments.map(comment => comment.UserID._id);
-//     const commentProfiles = await Profile.find({ userId: { $in: commentUserIds } });
-    
-//     const commentProfileMap = {};
-//     commentProfiles.forEach(profile => {
-//       commentProfileMap[profile.userId.toString()] = profile;
-//     });
-
-//     const commentsWithProfiles = recentComments.map(comment => ({
-//       ...comment._doc,
-//       UserProfile: commentProfileMap[comment.UserID._id.toString()] || null
-//     }));
-
-//     res.status(200).json({
-//       success: true,
-//       capsule: {
-//         ...capsule._doc,
-//         CreatorProfile: creatorProfile,
-//         LikesCount: likesCount,
-//         CommentsCount: commentsCount,
-//         IsLikedByUser: !!userLike,
-//         RecentComments: commentsWithProfiles
-//       }
-//     });
-//   } catch (error) {
-//     console.error('Error fetching capsule details:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'An error occurred while fetching capsule details',
-//       error: error.message
-//     });
-//   }
-// };
