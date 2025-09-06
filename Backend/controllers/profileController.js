@@ -1,5 +1,6 @@
 import { Profile } from '../models/Profile.js';
 import { Friendship } from '../models/friendshipModel.js';
+import TimeCapsule from '../models/TimeCapsule.js'; 
 
 export const createProfile = async (req, res) => {
   const { bio, username, cnic, contactNo, dob, gender, address } = req.body;
@@ -69,7 +70,6 @@ export const deleteProfile = async (req, res) => {
     res.status(500).json({ message: `Server error: ${error.message}` });
   }
 };
-
 export const getProfileByID = async (req, res) => {
   const userId = req.params.UserID;
   try {
@@ -139,5 +139,106 @@ export const updateProfile = async (req, res) => {
   } catch (error) {
     console.error('Error in updateProfile:', error);
     res.status(500).json({ message: `Server error: ${error.message}` });
+  }
+};
+
+
+
+export const getUserPublicCapsules = async (req, res) => {
+  const userId = req.params.UserID;
+  
+  try {
+    const publicCapsules = await TimeCapsule.find({ 
+      UserID: userId, 
+      CapsuleType: 'Public' 
+    }).sort({ createdAt: -1 });
+
+    // Update capsule status based on current date
+    const currentDate = new Date();
+    const updatedCapsules = publicCapsules.map(capsule => {
+      const capsuleData = { ...capsule._doc };
+      if (new Date(capsule.UnlockDate) < currentDate) {
+        capsuleData.Status = 'Open';
+      }
+      return capsuleData;
+    });
+
+    res.status(200).json({
+      success: true,
+      capsules: updatedCapsules
+    });
+  } catch (error) {
+    console.error('Error fetching user public capsules:', error);
+    res.status(500).json({ message: `Server error: ${error.message}` });
+  }
+};
+
+
+
+export const getUserFriends = async (req, res) => {
+  const targetUserId = req.params.UserID;
+  const currentUserId = req.userId;
+  
+  try {
+    console.log('=== getUserFriends Debug ===');
+    console.log('Current User ID:', currentUserId);
+    console.log('Target User ID:', targetUserId);
+    
+    // Get all friends of the target user (not just mutual friends)
+    const allFriends = await getAllUserFriends(targetUserId);
+    
+    console.log('Final result - all friends count:', allFriends.length);
+    console.log('=== End Debug ===');
+    
+    res.status(200).json({
+      success: true,
+      friends: allFriends
+    });
+  } catch (error) {
+    console.error('Error fetching user friends:', error);
+    res.status(500).json({ message: `Server error: ${error.message}` });
+  }
+};
+
+// New function to get ALL friends of a user
+const getAllUserFriends = async (userId) => {
+  try {
+    // Find all friendships where the user is either the sender or receiver
+    // and the friendship status is 'accepted'
+    const friendships = await Friendship.find({
+      $or: [
+        { user_id: userId, status: 'accepted' },
+        { friend_user_id: userId, status: 'accepted' }
+      ]
+    });
+
+    console.log(`Found ${friendships.length} accepted friendships for user ${userId}`);
+
+    // Extract friend IDs
+    const friendIds = friendships.map(friendship => {
+      // If the user is the sender, get the receiver's ID
+      // If the user is the receiver, get the sender's ID
+      return friendship.user_id.toString() === userId.toString() 
+        ? friendship.friend_user_id 
+        : friendship.user_id;
+    });
+
+    console.log('Friend IDs:', friendIds);
+
+    if (friendIds.length === 0) {
+      return [];
+    }
+
+    // Get profile information for all friends
+    const friendsProfiles = await Profile.find({
+      userId: { $in: friendIds }
+    }).select('_id username profilePicture userId bio gender createdAt');
+
+    console.log(`Found ${friendsProfiles.length} friend profiles`);
+
+    return friendsProfiles;
+  } catch (error) {
+    console.error('Error in getAllUserFriends:', error);
+    throw error;
   }
 };

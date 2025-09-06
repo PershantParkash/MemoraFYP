@@ -91,11 +91,23 @@ const FriendsScreen = () => {
     }
   };
 
-  const handleProfilePress = (userId, username, profilePicture) => {
+  // Updated to pass context for friend requests
+  const handleFriendRequestProfilePress = (userId, username, profilePicture) => {
     navigation.navigate('UserProfileScreen', {
       userId: userId,
       username: username,
       profilePicture: profilePicture,
+      context: 'friendRequest', // Add context for friend request
+    });
+  };
+
+  // Updated to pass context for find friends
+  const handleFindFriendsProfilePress = (userId, username, profilePicture) => {
+    navigation.navigate('UserProfileScreen', {
+      userId: userId,
+      username: username,
+      profilePicture: profilePicture,
+      context: 'findFriends', // Add context for find friends
     });
   };
 
@@ -103,7 +115,7 @@ const FriendsScreen = () => {
     <View style={styles.requestItem} key={item._id}>
       <View style={styles.pendingItem}>
         <TouchableOpacity
-          onPress={() => handleProfilePress(item.userId, item.username, item.profilePicture)}
+          onPress={() => handleFriendRequestProfilePress(item.userId, item.username, item.profilePicture)}
           style={styles.profileTouchable}
         >
           <Image
@@ -181,7 +193,7 @@ const FriendsScreen = () => {
           allProfiles.map((profile) => (
             <View style={styles.profileItem} key={profile._id}>
               <TouchableOpacity
-                onPress={() => handleProfilePress(profile.userId, profile.username, profile.profilePicture)}
+                onPress={() => handleFindFriendsProfilePress(profile.userId, profile.username, profile.profilePicture)}
                 style={styles.profileTouchable}
               >
                 <Image

@@ -1,5 +1,5 @@
 import express from 'express';
-import { createProfile, updateProfile, getProfile, deleteProfile, getAllProfilesExceptCurrentUser, getProfileByID } from '../controllers/profileController.js';
+import { createProfile, updateProfile, getProfile, deleteProfile, getAllProfilesExceptCurrentUser, getProfileByID, getUserPublicCapsules, getUserFriends } from '../controllers/profileController.js';
 const router = express.Router();
 import authMiddleware from '../middlewares/authMiddleware.js';
 import { uploadSingleFile, uploadMultipleFiles } from '../middlewares/fileUploadMiddleware.js';
@@ -11,5 +11,7 @@ router.get('/getProfile', authMiddleware, getProfile);
 router.delete('/deleteProfile', authMiddleware, deleteProfile);
 router.get('/getAllProfiles', authMiddleware, getAllProfilesExceptCurrentUser);
 router.get('/getProfileByID/:UserID', authMiddleware, getProfileByID);
+router.get('/getUserPublicCapsules/:UserID', authMiddleware, getUserPublicCapsules);
+router.get('/getUserFriends/:UserID', authMiddleware, getUserFriends);
 
 export default router;

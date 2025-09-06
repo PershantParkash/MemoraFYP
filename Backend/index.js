@@ -8,8 +8,6 @@ import friendRoutes from './routes/friendRoutes.js';
 import profileRoutes from './routes/profileRoutes.js'
 import likesRoutes from './routes/likesRoutes.js';
 import commentsRoutes from './routes/commentsRoutes.js';
-
-// import fileUploadMiddleware from './middlewares/fileUploadMiddleware.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -42,20 +40,7 @@ app.use('/api/nestedcapsules', nestedCapsuleRoutes);
 app.use('/api/likes', likesRoutes);
 app.use('/api/comments', commentsRoutes);
 
-// app.post('/api/timecapsules/create', (req, res) => {
-//     console.log('Request Body:', req.body); 
-//     res.status(201).json({s
-//       success: true,
-//       message: 'Time Capsule created successfully',
-//       data: req.body,
-//     });
-//   });
-
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-
-// const uploadsFolder = path.resolve('C:\\Users\\Pershant\\Desktop\\CliMemora\\backend', 'uploads');
-// app.use('/uploads', express.static(uploadsFolder));
 
 const PORT = process.env.PORT || 5000;
 const DB_URL = process.env.MONGO_URI;
