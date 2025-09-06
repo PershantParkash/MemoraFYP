@@ -85,6 +85,10 @@ const SettingsScreen = () => {
     // navigation.navigate('EditProfileScreen');
   };
 
+  const goToChangePassword = () => {
+    navigation.navigate('ChangePasswordScreen');
+  };
+
   const showFeatureComingSoon = () => {
     Alert.alert("Coming Soon", "This feature is coming soon!");
   };
@@ -139,7 +143,7 @@ const SettingsScreen = () => {
               <Icon name="settings-outline" size={24} color="#6BAED6" />
               <Text style={styles.cardTitle}>Account</Text>
             </View>
-            <TouchableOpacity style={styles.optionRow} onPress={showFeatureComingSoon}>
+            <TouchableOpacity style={styles.optionRow} onPress={goToChangePassword}>
               <Text style={styles.optionText}>Change Password</Text>
               <Icon name="chevron-forward-outline" size={20} color="#888" />
             </TouchableOpacity>

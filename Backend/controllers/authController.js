@@ -82,3 +82,70 @@ export const getAllUsers = async (req, res) => {
         res.status(500).json({ message: 'Error fetching users', error: error.message || error });
     }
 };
+
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.userId; // From auth middleware
+
+    // Validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false, message: 'Please provide both current and new password'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({  success: false,
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+        
+      return res.status(404).json({  success: false, message: 'User not found' });
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+         success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Check if new password is different from current password
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+         success: false,
+        message: 'New password must be different from current password'
+      });
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user password
+    await User.findByIdAndUpdate(userId, {
+      password: hashedNewPassword
+    });
+
+    
+
+
+    res.status(200).json({ success: true, message: "Password changed successfully" });
+
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({
+        success: false,
+      message: 'Error changing password',
+      error: error.message || error
+    });
+  }
+};
+

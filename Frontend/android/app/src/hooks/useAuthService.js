@@ -2,6 +2,7 @@ import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 import SessionManager from '../utils/sessionManager';
+import Config from 'react-native-config';
 
 const useAuthService = () => {
 
@@ -155,6 +156,39 @@ const createProfile = async (token, userData) => {
     }
 };
 
+ const changePassword = async (currentPassword, newPassword) => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+
+    if (!token) {
+      return { success: false, message: 'No authentication token found' };
+    }
+
+    const response = await axiosInstance.put(
+      '/api/auth/change-password',
+      {
+        currentPassword,
+        newPassword,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return { success: true, message: response.data.message };
+  } catch (error) {
+    console.error('Change password error:', error);
+
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Error changing password',
+    };
+  }
+};
+
+
   return { 
     loginUser, 
     registerUser, 
@@ -163,7 +197,8 @@ const createProfile = async (token, userData) => {
     checkSessionStatus, 
     saveLoginSession,
     getCurrentSession,
-    forceLogout
+    forceLogout,
+    changePassword
   };
 };
 

@@ -20,7 +20,7 @@ import CapsuleCreationScreen from './android/app/src/screens/CapsuleCreationScre
 import SendCapsulePage from './android/app/src/screens/SendCapsulePage';
 import UserProfileScreen from './android/app/src/screens/UserProfileScreen';
 import HomeCapsule from './android/app/src/screens/HomeCapsule'
-
+import ChangePasswordScreen  from './android/app/src/screens/ChangePasswordScreen'
 // Disable all warning notifications
 LogBox.ignoreAllLogs(true);
 
@@ -73,13 +73,14 @@ const AppContent = () => {
         <Stack.Screen name="Index" component={Index} />
         <Stack.Screen name="Tab" component={Tab} />
         <Stack.Screen name="RegistrationStep1" component={Registration} />
-             <Stack.Screen name="Home" component={HomeCapsule} />
+        <Stack.Screen name="Home" component={HomeCapsule} />
         <Stack.Screen name="RegistrationStep2" component={Registration2} /> 
         <Stack.Screen name="SettingsScreen" component={SettingsScreen} /> 
         <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
         <Stack.Screen name="CapsuleCreationScreen" component={CapsuleCreationScreen} />
         <Stack.Screen name="SendCapsulePage" component={SendCapsulePage} />
         <Stack.Screen name="UserProfileScreen" component={UserProfileScreen} />
+        <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
