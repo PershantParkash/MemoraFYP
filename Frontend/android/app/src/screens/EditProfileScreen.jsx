@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 
 import Config from 'react-native-config';
@@ -18,6 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import useProfileService from '../hooks/useProfileService';
 import { MyContext } from '../context/MyContext';
+
+const { width } = Dimensions.get('window');
 
 const EditProfileScreen = () => {
   const { updateUserProfile, fetchProfileData } = useProfileService();
@@ -152,146 +155,185 @@ const EditProfileScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6BAED6" />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <View style={styles.loadingCard}>
+          <ActivityIndicator size="large" color="#667EEA" />
+          <Text style={styles.loadingText}>Loading your profile...</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      
-      <View style={styles.profileSection}>
-        <TouchableOpacity
-          style={styles.profilePicContainer}
-          onPress={handlePickImage}
-          disabled={isSubmitting}
-        >
-          <Image
-            source={
-              profileData.profilePicture?.startsWith('file')
-                ? { uri: profileData.profilePicture }
-                : { uri: `${Config.API_BASE_URL}/uploads/${profileData.profilePicture}` }
-            }
-            style={styles.profilePic}
-          />
-          <View style={styles.editOverlay}>
-            <Text style={styles.editText}>✏️</Text>
+    <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header Section */}
+        <View style={styles.headerSection}>
+          <View style={styles.headerGradient}>
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <Text style={styles.headerSubtitle}>Update your information</Text>
           </View>
-        </TouchableOpacity>
-        <Text style={styles.profileHint}>Tap to change photo</Text>
-      </View>
+        </View>
 
-      
-      <View style={styles.formSection}>
-        <InputField
-          label="Username"
-          value={profileData.username}
-          onChangeText={(text) => setProfileData({ ...profileData, username: text })}
-          editable={!isSubmitting}
-        />
-
-        <InputField
-          label="Bio"
-          value={profileData.bio}
-          onChangeText={(text) => setProfileData({ ...profileData, bio: text })}
-          multiline
-          editable={!isSubmitting}
-          placeholder="Tell us about yourself..."
-        />
-
-        <InputField
-          label="CNIC"
-          value={profileData.cnic}
-          keyboardType="numeric"
-          maxLength={13}
-          onChangeText={(text) => setProfileData({ ...profileData, cnic: text })}
-          editable={!isSubmitting}
-          placeholder="13-digit CNIC number"
-        />
-
-        <InputField
-          label="Contact Number"
-          value={profileData.contactNo}
-          keyboardType="phone-pad"
-          onChangeText={(text) => setProfileData({ ...profileData, contactNo: text })}
-          editable={!isSubmitting}
-          placeholder="Your phone number"
-        />
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Date of Birth</Text>
+        {/* Profile Picture Section */}
+        <View style={styles.profileSection}>
           <TouchableOpacity
-            style={[styles.input, styles.dateInput, isSubmitting && styles.disabledInput]}
-            onPress={() => !isSubmitting && setShowDatePicker(true)}
+            style={styles.profilePicContainer}
+            onPress={handlePickImage}
             disabled={isSubmitting}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.dateText, !profileData.dob && styles.placeholderText]}>
-              {profileData.dob
-                ? new Date(profileData.dob).toLocaleDateString('en-US', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })
-                : 'Select your date of birth'}
-            </Text>
+            <View style={styles.profilePicWrapper}>
+              <Image
+                source={
+                  profileData.profilePicture?.startsWith('file')
+                    ? { uri: profileData.profilePicture }
+                    : { uri: `${Config.API_BASE_URL}/uploads/${profileData.profilePicture}` }
+                }
+                style={styles.profilePic}
+              />
+              <View style={styles.editOverlay}>
+                <View style={styles.cameraIcon}>
+                  <Text style={styles.cameraText}>📷</Text>
+                </View>
+              </View>
+            </View>
           </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={profileData.dob ? new Date(profileData.dob) : new Date()}
-              mode="date"
-              display="default"
-              onChange={handleDateChange}
-              maximumDate={new Date()}
-            />
-          )}
+          <Text style={styles.profileHint}>Tap to update photo</Text>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Gender</Text>
-          <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={profileData.gender}
-              onValueChange={(value) => setProfileData({ ...profileData, gender: value })}
-              enabled={!isSubmitting}
-              style={styles.picker}
+        {/* Form Section */}
+        <View style={styles.formSection}>
+          <InputField
+            label="Username"
+            value={profileData.username}
+            onChangeText={(text) => setProfileData({ ...profileData, username: text })}
+            editable={!isSubmitting}
+            // icon="👤"
+          />
+
+          <InputField
+            label="Bio"
+            value={profileData.bio}
+            onChangeText={(text) => setProfileData({ ...profileData, bio: text })}
+            multiline
+            editable={!isSubmitting}
+            placeholder="Tell us about yourself..."
+            // icon="📝"
+          />
+
+          <InputField
+            label="CNIC"
+            value={profileData.cnic}
+            keyboardType="numeric"
+            maxLength={13}
+            onChangeText={(text) => setProfileData({ ...profileData, cnic: text })}
+            editable={!isSubmitting}
+            placeholder="13-digit CNIC number"
+            // icon="🆔"
+          />
+
+          <InputField
+            label="Contact Number"
+            value={profileData.contactNo}
+            keyboardType="phone-pad"
+            onChangeText={(text) => setProfileData({ ...profileData, contactNo: text })}
+            editable={!isSubmitting}
+            placeholder="Your phone number"
+            // icon="📱"
+          />
+
+          <View style={styles.inputContainer}>
+            <View style={styles.labelContainer}>
+              {/* <Text style={styles.iconLabel}>📅</Text> */}
+              <Text style={styles.inputLabel}>Date of Birth</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.input, styles.dateInput, isSubmitting && styles.disabledInput]}
+              onPress={() => !isSubmitting && setShowDatePicker(true)}
+              disabled={isSubmitting}
+              activeOpacity={0.7}
             >
-              <Picker.Item label="Select Gender" value="" />
-              <Picker.Item label="Male" value="male" />
-              <Picker.Item label="Female" value="female" />
-              <Picker.Item label="Other" value="other" />
-            </Picker>
+              <Text style={[styles.dateText, !profileData.dob && styles.placeholderText]}>
+                {profileData.dob
+                  ? new Date(profileData.dob).toLocaleDateString('en-US', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })
+                  : 'Select your date of birth'}
+              </Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={profileData.dob ? new Date(profileData.dob) : new Date()}
+                mode="date"
+                display="default"
+                onChange={handleDateChange}
+                maximumDate={new Date()}
+              />
+            )}
           </View>
+
+          <View style={styles.inputContainer}>
+            <View style={styles.labelContainer}>
+              {/* <Text style={styles.iconLabel}>⚧</Text> */}
+              <Text style={styles.inputLabel}>Gender</Text>
+            </View>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={profileData.gender}
+                onValueChange={(value) => setProfileData({ ...profileData, gender: value })}
+                enabled={!isSubmitting}
+                style={styles.picker}
+              >
+                <Picker.Item label="Select Gender" value="" />
+                <Picker.Item label="Male" value="male" />
+                <Picker.Item label="Female" value="female" />
+                <Picker.Item label="Other" value="other" />
+              </Picker>
+            </View>
+          </View>
+
+          <InputField
+            label="Address"
+            value={profileData.address}
+            onChangeText={(text) => setProfileData({ ...profileData, address: text })}
+            multiline
+            editable={!isSubmitting}
+            placeholder="Your complete address..."
+            // icon="🏠"
+          />
         </View>
 
-        <InputField
-          label="Address"
-          value={profileData.address}
-          onChangeText={(text) => setProfileData({ ...profileData, address: text })}
-          multiline
-          editable={!isSubmitting}
-          placeholder="Your complete address..."
-        />
-      </View>
+        {/* Save Button Section */}
+        <View style={styles.buttonSection}>
+          <TouchableOpacity
+            style={[styles.saveButton, isSubmitting && styles.disabledButton]}
+            onPress={handleSave}
+            disabled={isSubmitting}
+            activeOpacity={0.8}
+          >
+            {isSubmitting ? (
+              <View style={styles.loadingButtonContent}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.loadingButtonText}>Saving...</Text>
+              </View>
+            ) : (
+              <View style={styles.buttonContent}>
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text style={styles.buttonIcon}>✨</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
-     
-      <View style={styles.buttonSection}>
-        <TouchableOpacity
-          style={[styles.saveButton, isSubmitting && styles.disabledButton]}
-          onPress={handleSave}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save Changes</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      
       <Toast />
-    </ScrollView>
+    </View>
   );
 };
 
@@ -302,161 +344,267 @@ const InputField = ({
   multiline, 
   editable = true, 
   placeholder,
+  icon,
   ...props 
 }) => (
   <View style={styles.inputContainer}>
-    <Text style={styles.inputLabel}>{label}</Text>
-    <TextInput
-      style={[
-        styles.input,
-        multiline && styles.textArea,
-        !editable && styles.disabledInput,
-      ]}
-      value={value}
-      onChangeText={onChangeText}
-      multiline={multiline}
-      editable={editable}
-      placeholder={placeholder}
-      placeholderTextColor="#aaa"
-      textAlignVertical={multiline ? 'top' : 'center'}
-      {...props}
-    />
+    <View style={styles.labelContainer}>
+      {icon && <Text style={styles.iconLabel}>{icon}</Text>}
+      <Text style={styles.inputLabel}>{label}</Text>
+    </View>
+    <View style={styles.inputWrapper}>
+      <TextInput
+        style={[
+          styles.input,
+          multiline && styles.textArea,
+          !editable && styles.disabledInput,
+        ]}
+        value={value}
+        onChangeText={onChangeText}
+        multiline={multiline}
+        editable={editable}
+        placeholder={placeholder}
+        placeholderTextColor="#A0A3BD"
+        textAlignVertical={multiline ? 'top' : 'center'}
+        {...props}
+      />
+    </View>
   </View>
 );
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#F8F9FF',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fafafa',
+    backgroundColor: '#F8F9FF',
+    paddingHorizontal: 20,
+  },
+  loadingCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    shadowColor: '#6BAED6',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 20,
     fontSize: 16,
-    color: '#666',
+    color: '#6BAED6',
+    fontWeight: '600',
+  },
+  headerSection: {
+    height: 140,
+    overflow: 'hidden',
+  },
+  headerGradient: {
+    flex: 1,
+    backgroundColor: '#6BAED6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom:"10px"
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
+    marginBottom:"5px"
   },
   profileSection: {
     alignItems: 'center',
-    paddingVertical: 50,
-    backgroundColor: '#fff',
-    marginBottom: 1,
+    paddingVertical: 30,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: -30,
+    borderRadius: 20,
+    shadowColor: '#6BAED6',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
   },
   profilePicContainer: {
+    marginBottom: 15,
+  },
+  profilePicWrapper: {
     position: 'relative',
-    marginBottom: 12,
   },
   profilePic: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#f0f0f0',
-    borderWidth: 3,
-    borderColor: '#6BAED6',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F0F3FF',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    shadowColor: '#6BAED6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
+    elevation: 8,
   },
   editOverlay: {
     position: 'absolute',
-    bottom: 5,
-    right: 5,
+    bottom: 0,
+    right: 0,
+  },
+  cameraIcon: {
     backgroundColor: '#6BAED6',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#6BAED6',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  editText: {
-    fontSize: 14,
+  cameraText: {
+    fontSize: 16,
   },
   profileHint: {
     fontSize: 14,
     color: '#6BAED6',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   formSection: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingTop: 30,
-    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 20,
+    paddingHorizontal: 25,
+    paddingVertical: 30,
+    shadowColor: '#6BAED6',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 15,
+    elevation: 5,
   },
   inputContainer: {
     marginBottom: 25,
   },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  iconLabel: {
+    fontSize: 16,
+    marginRight: 8,
+  },
   inputLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2D3436',
+  },
+  inputWrapper: {
+    position: 'relative',
   },
   input: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    backgroundColor: '#F8F9FF',
+    borderRadius: 15,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
     fontSize: 16,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#e8e8e8',
+    color: '#2D3436',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    fontWeight: '500',
   },
   textArea: {
-    height: 90,
-    paddingTop: 12,
+    height: 100,
+    paddingTop: 15,
   },
   disabledInput: {
-    backgroundColor: '#f0f0f0',
-    color: '#888',
+    backgroundColor: '#F1F2F6',
+    color: '#A0A3BD',
   },
   dateInput: {
     justifyContent: 'center',
   },
   dateText: {
     fontSize: 16,
-    color: '#333',
+    color: '#2D3436',
+    fontWeight: '500',
   },
   placeholderText: {
-    color: '#aaa',
+    color: '#A0A3BD',
   },
   pickerWrapper: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e8e8e8',
+    backgroundColor: '#F8F9FF',
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: 'transparent',
     overflow: 'hidden',
   },
+  picker: {
+    height: 50,
+    color: '#2D3436',
+  },
   buttonSection: {
-    backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingTop: 25,
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
   saveButton: {
     backgroundColor: '#6BAED6',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 15,
+    paddingVertical: 18,
     alignItems: 'center',
     shadowColor: '#6BAED6',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   saveButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    marginRight: 8,
+  },
+  buttonIcon: {
+    fontSize: 16,
+  },
+  loadingButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
   },
   disabledButton: {
-    backgroundColor: '#a0c8e0',
+    backgroundColor: '#B2C3F7',
     shadowOpacity: 0,
     elevation: 0,
   },

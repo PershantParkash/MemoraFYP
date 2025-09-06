@@ -171,6 +171,42 @@ const ProfileScreen = () => {
     getCurrentUserId();
   }, []);
 
+  
+useEffect(() => {
+  const getInitialData = async () => {
+    // Fetch initial counts for display in stats
+    try {
+      // Fetch capsules count
+      const capsulesData = await getUserCapsules();
+      setCapsules(capsulesData);
+      
+      // Fetch friends count
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        const response = await axiosInstance.get('/api/friends/user-friends', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (response.data && response.data.friends) {
+          // Just set the count, don't fetch full profile data yet
+          const friendsWithBasicInfo = response.data.friends.map(friend => ({
+            ...friend,
+            profilePicture: null, // Will be loaded when friends tab is accessed
+            username: null
+          }));
+          setFriends(friendsWithBasicInfo);
+        }
+      }
+    } catch (error) {
+      console.error('[ProfileScreen] Error fetching initial data:', error);
+    }
+  };
+
+  getInitialData();
+}, []); 
+
   const toggleLike = async (capsuleId) => {
     console.log('[ProfileScreen] toggleLike called for capsule:', capsuleId);
     
@@ -707,13 +743,19 @@ const ProfileScreen = () => {
     }
   };
 
-  useEffect(() => {
-    if (activeTab === 'capsules' && capsules.length === 0) {
-      fetchCapsules();
-    } else if (activeTab === 'friends' && friends.length === 0) {
+  
+
+ useEffect(() => {
+  if (activeTab === 'capsules' && capsules.length === 0) {
+    fetchCapsules();
+  } else if (activeTab === 'friends') {
+    // Only fetch full friend details if we don't have profile pictures yet
+    const needsFullData = friends.some(friend => friend.profilePicture === null);
+    if (needsFullData) {
       fetchFriends();
     }
-  }, [activeTab]);
+  }
+}, [activeTab]);
 
   const renderCapsuleItem = ({ item }) => {
     const isOwnCapsule = true; 

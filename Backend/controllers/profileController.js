@@ -1,6 +1,8 @@
 import { Profile } from '../models/Profile.js';
 import { Friendship } from '../models/friendshipModel.js';
 import TimeCapsule from '../models/TimeCapsule.js'; 
+import Like from '../models/Like.js';
+import Comment from '../models/Comment.js';
 
 export const createProfile = async (req, res) => {
   const { bio, username, cnic, contactNo, dob, gender, address } = req.body;
@@ -20,31 +22,6 @@ export const createProfile = async (req, res) => {
     res.status(500).json({ message: `Server error: ${error.message}` });
   }
 };
-
-// export const updateProfile = async (req, res) => {
-//   const { bio, username, cnic, contactNo, dob, gender, address } = req.body;
-//   const userId = req.userId;
-//   const profilePicture = req.file.filename;
-//   try {
-//     const profile = await Profile.findOne({ userId });
-//     if (!profile) return res.status(404).json({ message: 'Profile not found' });
-
-//     if (bio !== undefined) profile.bio = bio;
-//     if (profilePicture !== undefined) profile.profilePicture = profilePicture;
-//     if (username !== undefined) profile.username = username;
-//     if (cnic !== undefined) profile.cnic = cnic;
-//     if (contactNo !== undefined) profile.contactNo = contactNo;
-//     if (dob !== undefined) profile.dob = dob;
-//     if (gender !== undefined) profile.gender = gender;
-//     if (address !== undefined) profile.address = address;
-
-//     await profile.save();
-//     res.status(200).json(profile);
-//   } catch (error) {
-//     console.error('Error in updateProfile:', error);
-//     res.status(500).json({ message: `Server error: ${error.message}` });
-//   }
-// };
 
 export const getProfile = async (req, res) => {
   const userId = req.userId;
@@ -144,7 +121,38 @@ export const updateProfile = async (req, res) => {
 
 
 
+// export const getUserPublicCapsules = async (req, res) => {
+//   const loginUserId = req.userId;
+//   const userId = req.params.UserID;
+  
+//   try {
+//     const publicCapsules = await TimeCapsule.find({ 
+//       UserID: userId, 
+//       CapsuleType: 'Public' 
+//     }).sort({ createdAt: -1 });
+
+//     // Update capsule status based on current date
+//     const currentDate = new Date();
+//     const updatedCapsules = publicCapsules.map(capsule => {
+//       const capsuleData = { ...capsule._doc };
+//       if (new Date(capsule.UnlockDate) < currentDate) {
+//         capsuleData.Status = 'Open';
+//       }
+//       return capsuleData;
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       capsules: updatedCapsules
+//     });
+//   } catch (error) {
+//     console.error('Error fetching user public capsules:', error);
+//     res.status(500).json({ message: `Server error: ${error.message}` });
+//   }
+// };
+
 export const getUserPublicCapsules = async (req, res) => {
+  const loginUserId = req.userId;
   const userId = req.params.UserID;
   
   try {
@@ -153,7 +161,6 @@ export const getUserPublicCapsules = async (req, res) => {
       CapsuleType: 'Public' 
     }).sort({ createdAt: -1 });
 
-    // Update capsule status based on current date
     const currentDate = new Date();
     const updatedCapsules = publicCapsules.map(capsule => {
       const capsuleData = { ...capsule._doc };
@@ -163,17 +170,58 @@ export const getUserPublicCapsules = async (req, res) => {
       return capsuleData;
     });
 
+    const capsuleIds = updatedCapsules.map(capsule => capsule._id);
+
+    const likesAggregation = await Like.aggregate([
+      { $match: { TimeCapsuleID: { $in: capsuleIds } } },
+      { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
+    ]);
+
+    const commentsAggregation = await Comment.aggregate([
+      { $match: { TimeCapsuleID: { $in: capsuleIds } } },
+      { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
+    ]);
+
+    const userLikes = await Like.find({
+      UserID: loginUserId,
+      TimeCapsuleID: { $in: capsuleIds }
+    });
+
+    const likesCountMap = {};
+    likesAggregation.forEach(like => {
+      likesCountMap[like._id.toString()] = like.count;
+    });
+
+    const commentsCountMap = {};
+    commentsAggregation.forEach(comment => {
+      commentsCountMap[comment._id.toString()] = comment.count;
+    });
+
+    const userLikesMap = {};
+    userLikes.forEach(like => {
+      userLikesMap[like.TimeCapsuleID.toString()] = true;
+    });
+
+    const finalCapsules = updatedCapsules.map(capsule => {
+      const capsuleId = capsule._id.toString();
+      
+      return {
+        ...capsule,
+        LikesCount: likesCountMap[capsuleId] || 0,
+        CommentsCount: commentsCountMap[capsuleId] || 0,
+        IsLikedByUser: userLikesMap[capsuleId] || false
+      };
+    });
+
     res.status(200).json({
       success: true,
-      capsules: updatedCapsules
+      capsules: finalCapsules
     });
   } catch (error) {
     console.error('Error fetching user public capsules:', error);
     res.status(500).json({ message: `Server error: ${error.message}` });
   }
 };
-
-
 
 export const getUserFriends = async (req, res) => {
   const targetUserId = req.params.UserID;
