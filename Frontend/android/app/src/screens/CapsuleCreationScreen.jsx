@@ -142,12 +142,13 @@ const CapsuleCreationScreen = () => {
   };
 
   const openEmotionalModal = () => {
-    setIsEmotionalModalVisible(true);
+     setEmotionalText(description || '');
+  setIsEmotionalModalVisible(true);
   };
 
   const closeEmotionalModal = () => {
     setIsEmotionalModalVisible(false);
-    setEmotionalText('');
+    // setEmotionalText('');
   };
 
   const saveEmotionalConnection = () => {
