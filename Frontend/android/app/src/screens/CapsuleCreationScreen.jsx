@@ -373,8 +373,11 @@ const CreateCapsule = async () => {
 const isCreateButtonDisabled = () => {
     return loading ||
       isCheckingFriends ||
-      (capsuleType === 'Shared' && friends.length === 0) ||
-      (isNestedCapsule && !selectedParentCapsule);
+      !title.trim() ||
+      (!isNestedCapsule && !unlockDate) ||
+      (isNestedCapsule && !selectedParentCapsule) ||
+      !fileUri ||
+      (capsuleType === 'Shared' && friends.length === 0);
   };
 
   const renderEmotionalModal = () => (
@@ -576,6 +579,29 @@ const isCreateButtonDisabled = () => {
       </TouchableOpacity>
     ))}
   </View>
+  {/* Show checking friends message */}
+{capsuleType === 'Shared' && isCheckingFriends && (
+  <Text style={styles.checkingText}>Checking friends...</Text>
+)}
+
+{/* Show no friends warning - this should always show when Shared is selected and no friends */}
+{capsuleType === 'Shared' && !isCheckingFriends && friends.length === 0 && (
+  <View style={styles.warningContainer}>
+    <Text style={styles.noFriendsText}>
+       No friends found. Add friends to create shared capsules.
+    </Text>
+  </View>
+)}
+
+{/* Show nested capsule loading */}
+{isNestedCapsule && isLoadingParentCapsules && (
+  <Text style={styles.checkingText}>Loading parent capsules...</Text>
+)}
+
+{/* Show no parent capsules warning */}
+{isNestedCapsule && !isLoadingParentCapsules && parentCapsules.length === 0 && (
+  <Text style={styles.noCapsulesText}>No personal capsules found to nest under.</Text>
+)}
 </View>
 
 
@@ -846,6 +872,27 @@ activeButtonText: {
   parentCapsuleDate: {
     fontSize: 12,
     color: '#888',
+  },
+   warningContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#fff3cd',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ffeaa7',
+  },
+  addFriendsButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#6BAED6',
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  addFriendsButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
