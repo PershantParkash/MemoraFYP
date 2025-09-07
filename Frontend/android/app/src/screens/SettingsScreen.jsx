@@ -89,6 +89,22 @@ const SettingsScreen = () => {
     navigation.navigate('ChangePasswordScreen');
   };
 
+  const goToTermsOfService = () => {
+    navigation.navigate('TermsOfServiceScreen');
+  };
+
+  const goToHelp = () => {
+    navigation.navigate('HelpScreen');
+  };
+
+  const goToAbout = () => {
+    navigation.navigate('AboutMemoraScreen');
+  };
+
+  const goToFeedback = () => {
+    navigation.navigate('FeedbackScreen');
+  };
+
   const showFeatureComingSoon = () => {
     Alert.alert("Coming Soon", "This feature is coming soon!");
   };
@@ -111,6 +127,7 @@ const SettingsScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {/* Profile Section */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Icon name="person-circle-outline" size={24} color="#6BAED6" />
@@ -122,22 +139,7 @@ const SettingsScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Icon name="notifications-outline" size={24} color="#6BAED6" />
-              <Text style={styles.cardTitle}>Notifications</Text>
-            </View>
-            <View style={styles.optionRow}>
-              <Text style={styles.optionText}>Enable Notifications</Text>
-              <Switch
-                value={isNotificationsEnabled}
-                onValueChange={toggleNotifications}
-                trackColor={{ false: '#D1D1D6', true: '#A7D0ED' }}
-                thumbColor={isNotificationsEnabled ? '#6BAED6' : '#F4F4F4'}
-              />
-            </View>
-          </View>
-
+          {/* Account Section */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Icon name="settings-outline" size={24} color="#6BAED6" />
@@ -147,8 +149,66 @@ const SettingsScreen = () => {
               <Text style={styles.optionText}>Change Password</Text>
               <Icon name="chevron-forward-outline" size={20} color="#888" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.optionRow} onPress={showFeatureComingSoon}>
-              <Text style={styles.optionText}>Manage Account</Text>
+          </View>
+
+          {/* Preferences Section */}
+          {/* <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="tune-outline" size={24} color="#6BAED6" />
+              <Text style={styles.cardTitle}>Preferences</Text>
+            </View>
+            <View style={styles.optionRow}>
+              <Text style={styles.optionText}>Notifications</Text>
+              <Switch
+                value={isNotificationsEnabled}
+                onValueChange={toggleNotifications}
+                trackColor={{ false: '#E0E0E0', true: '#6BAED6' }}
+                thumbColor={isNotificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
+              />
+            </View>
+            <View style={[styles.optionRow, styles.lastOptionRow]}>
+              <Text style={styles.optionText}>Dark Mode</Text>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleDarkMode}
+                trackColor={{ false: '#E0E0E0', true: '#6BAED6' }}
+                thumbColor={isDarkMode ? '#FFFFFF' : '#FFFFFF'}
+              />
+            </View>
+          </View> */}
+
+          {/* Support & Information Section */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="information-circle-outline" size={24} color="#6BAED6" />
+              <Text style={styles.cardTitle}>Support & Information</Text>
+            </View>
+            <TouchableOpacity style={styles.optionRow} onPress={goToHelp}>
+              <View style={styles.optionLeft}>
+                <Icon name="help-circle-outline" size={20} color="#666" />
+                <Text style={styles.optionTextWithIcon}>Help Center</Text>
+              </View>
+              <Icon name="chevron-forward-outline" size={20} color="#888" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.optionRow} onPress={goToFeedback}>
+              <View style={styles.optionLeft}>
+                <Icon name="chatbubble-outline" size={20} color="#666" />
+                <Text style={styles.optionTextWithIcon}>Send Feedback</Text>
+              </View>
+              <Icon name="chevron-forward-outline" size={20} color="#888" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.optionRow} onPress={goToAbout}>
+              <View style={styles.optionLeft}>
+                <Icon name="heart-outline" size={20} color="#666" />
+                <Text style={styles.optionTextWithIcon}>About Memora</Text>
+              </View>
+              <Icon name="chevron-forward-outline" size={20} color="#888" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.optionRow, styles.lastOptionRow]} onPress={goToTermsOfService}>
+              <View style={styles.optionLeft}>
+                <Icon name="document-text-outline" size={20} color="#666" />
+                <Text style={styles.optionTextWithIcon}>Terms of Service</Text>
+              </View>
               <Icon name="chevron-forward-outline" size={20} color="#888" />
             </TouchableOpacity>
           </View>
@@ -241,10 +301,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E8F4FC',
   },
+  lastOptionRow: {
+    borderBottomWidth: 0,
+  },
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   optionText: {
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  optionTextWithIcon: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    marginLeft: 12,
   },
   logoutButton: {
     backgroundColor: '#FF4D4D',

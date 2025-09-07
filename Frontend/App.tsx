@@ -21,7 +21,12 @@ import SendCapsulePage from './android/app/src/screens/SendCapsulePage';
 import UserProfileScreen from './android/app/src/screens/UserProfileScreen';
 import HomeCapsule from './android/app/src/screens/HomeCapsule'
 import ChangePasswordScreen  from './android/app/src/screens/ChangePasswordScreen'
-// Disable all warning notifications
+import TermsOfServiceScreen from './android/app/src/screens/TermsOfServiceScreen'
+import HelpScreen from './android/app/src/screens/HelpScreen'
+import FeedbackScreen from  './android/app/src/screens/FeedbackScreen'
+import AboutMemoraScreen from './android/app/src/screens/AboutMemoraScreen'
+
+
 LogBox.ignoreAllLogs(true);
 
 const Stack = createNativeStackNavigator();
@@ -81,6 +86,10 @@ const AppContent = () => {
         <Stack.Screen name="SendCapsulePage" component={SendCapsulePage} />
         <Stack.Screen name="UserProfileScreen" component={UserProfileScreen} />
         <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
+        <Stack.Screen name="TermsOfServiceScreen" component={TermsOfServiceScreen} />
+        <Stack.Screen name="HelpScreen" component={HelpScreen} />
+           <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />
+            <Stack.Screen name="AboutMemoraScreen" component={AboutMemoraScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
