@@ -749,7 +749,6 @@ useEffect(() => {
   if (activeTab === 'capsules' && capsules.length === 0) {
     fetchCapsules();
   } else if (activeTab === 'friends') {
-    // Only fetch full friend details if we don't have profile pictures yet
     const needsFullData = friends.some(friend => friend.profilePicture === null);
     if (needsFullData) {
       fetchFriends();

@@ -200,84 +200,22 @@ const CapsuleCreationScreen = () => {
     return true;
   };
 
-  const CreateCapsule = async () => {
-    if (!validateForm()) return;
+const CreateCapsule = async () => {
+  if (!validateForm()) return;
 
-    try {
-      // Prepare form data for file upload
-      const formData = new FormData();
-      
-if (capsuleInfo.fileUri) {
-  const fileName = capsuleInfo.fileUri.split('/').pop();
-  const fileType = getFileType(
-    capsuleInfo.fileUri,
-    capsuleInfo.mediaType || 'photo' // fallback to photo if not provided
-  );
-
-  formData.append('files', {
-    uri: capsuleInfo.fileUri,
-    name: fileName || 'uploaded_file',
-    type: fileType,
-  });
-
-  console.log('Uploading media file:', {
-    fileName,
-    fileType,
-    mediaType: capsuleInfo.mediaType,
-  });
-} else {
-  console.error('No file provided');
-  Alert.alert('Error', 'Please select a file for the capsule.');
-  return;
-}
-
-      // if (fileUri) {
-      //   const fileName = fileUri.split('/').pop();
-      //   formData.append('files', {
-      //     uri: fileUri,
-      //     type: 'image/jpeg',
-      //     name: fileName || 'capsule_image.jpg'
-      //   });
-      // } 
-      // else {
-      //   console.error('No image file provided');
-      //   Alert.alert('Error', 'Please select an image for the capsule.');
-      //   return;
-      // }
-      
-      // Add other capsule data
-      formData.append('title', title);
-      formData.append('description', description || '');
-      formData.append('capsuleType', capsuleType);
-      
-      if (!isNestedCapsule) {
-        formData.append('unlockDate', moment(unlockDate).format('YYYY-MM-DD'));
-      } else {
-        formData.append('parentCapsuleId', selectedParentCapsule._id);
-      }
-
-      // Get and add location - SIMPLIFIED VERSION for react-native-get-location
+  try {
+    // Get location first (for non-nested capsules)
+    let currentLocation = null;
+    if (!isNestedCapsule) {
       try {
         console.log('Getting current location...');
-        const currentLocation = await getCurrentLocation();
-
-        if (currentLocation && currentLocation.lat && currentLocation.lng) {
-          formData.append('lat', currentLocation.lat.toString());
-          formData.append('lng', currentLocation.lng.toString());
+        currentLocation = await getCurrentLocation();
+        if (currentLocation?.lat && currentLocation?.lng) {
           setLocation(currentLocation);
-          
           Toast.show({
             type: 'success',
             text1: 'Location Found',
             text2: `Lat: ${currentLocation.lat.toFixed(6)}, Lng: ${currentLocation.lng.toFixed(6)}`,
-          });
-          console.log('Location added to capsule:', currentLocation);
-        } else {
-          console.warn('Could not get location');
-          Toast.show({
-            type: 'info',
-            text1: 'Location Info',
-            text2: 'Proceeding without location data.',
           });
         }
       } catch (locationError) {
@@ -287,29 +225,109 @@ if (capsuleInfo.fileUri) {
           text1: 'Location Warning',
           text2: 'Could not get location. Proceeding without location data.',
         });
-        // Continue without location - don't block capsule creation
       }
+    }
 
-      // Update context with capsule info
-      setCapsuleInfo({
-        ...capsuleInfo,
-        title,
-        description,
-        unlockDate: isNestedCapsule ? null : unlockDate,
-        capsuleType,
-        fileUri,
-        location: location,
-      });
+    // Prepare form data
+    const formData = new FormData();
+    
+    // Add basic capsule information
+    formData.append('title', title);
+    
+    // Only add description if it's not empty (to match your curl example)
+    if (description && description.trim()) {
+      formData.append('description', description);
+    }
+    
+    formData.append('capsuleType', capsuleType);
+    
+    // Add nested capsule specific data
+    if (isNestedCapsule && selectedParentCapsule) {
+      formData.append('parentCapsuleId', selectedParentCapsule._id);
+      console.log('Adding parentCapsuleId:', selectedParentCapsule._id);
+    }
+    
+    // Add unlock date for non-nested capsules
+    if (!isNestedCapsule && unlockDate) {
+      formData.append('unlockDate', moment(unlockDate).format('YYYY-MM-DD'));
+    }
 
-      // Toast.show({
-      //   type: 'success',
-      //   text1: 'Capsule Data Prepared',
-      //   text2: 'Ready to create capsule',
-      // });
+    // Add location data if available (for non-nested capsules)
+    if (!isNestedCapsule && currentLocation?.lat && currentLocation?.lng) {
+      formData.append('lat', currentLocation.lat.toString());
+      formData.append('lng', currentLocation.lng.toString());
+    }
 
-      // Uncomment these when you want to actually create the capsule
-      if (isNestedCapsule) {
-        const response = await handleCreateNestedCapsule(formData);
+    // Handle file upload - SIMPLIFIED AND CONSISTENT
+    let fileToUpload = null;
+    let mediaTypeToUse = 'photo'; // default
+
+    if (capsuleInfo?.fileUri) {
+      fileToUpload = capsuleInfo.fileUri;
+      mediaTypeToUse = capsuleInfo.mediaType || 'photo';
+    } else if (fileUri) {
+      fileToUpload = fileUri;
+      mediaTypeToUse = 'photo'; // fallback for backward compatibility
+    }
+
+    if (!fileToUpload) {
+      console.error('No file provided');
+      Alert.alert('Error', 'Please select a file for the capsule.');
+      return;
+    }
+
+    // Add the file
+    const fileName = fileToUpload.split('/').pop();
+    const fileType = getFileType(fileToUpload, mediaTypeToUse);
+
+    formData.append('files', {
+      uri: fileToUpload,
+      name: fileName || 'uploaded_file',
+      type: fileType,
+    });
+
+    // Add mediaType only for nested capsules (if needed by backend)
+    if (isNestedCapsule) {
+      formData.append('mediaType', mediaTypeToUse);
+    }
+
+    console.log('Uploading media file:', {
+      fileName,
+      fileType,
+      mediaType: mediaTypeToUse,
+      isNestedCapsule
+    });
+
+    // Debug: Log FormData contents
+    console.log('FormData contents:');
+    if (formData._parts) {
+      for (let [key, value] of formData._parts) {
+        if (key === 'files') {
+          console.log(`${key}:`, { uri: value.uri, name: value.name, type: value.type });
+        } else {
+          console.log(`${key}:`, value);
+        }
+      }
+    }
+
+    // Update context
+    setCapsuleInfo({
+      ...capsuleInfo,
+      title,
+      description,
+      unlockDate: isNestedCapsule ? null : unlockDate,
+      capsuleType,
+      fileUri: fileToUpload,
+      location: currentLocation,
+      parentCapsuleId: isNestedCapsule ? selectedParentCapsule._id : null,
+    });
+
+    // Create the appropriate capsule type
+    if (isNestedCapsule) {
+      console.log('Creating nested capsule with parentCapsuleId:', selectedParentCapsule._id);
+      const response = await handleCreateNestedCapsule(formData);
+      
+      if (response) {
         Toast.show({
           type: 'success',
           text1: 'Nested Capsule Created Successfully!',
@@ -318,8 +336,11 @@ if (capsuleInfo.fileUri) {
         setTimeout(() => {
           navigation.navigate('Tab');
         }, 500);
-      } else if (capsuleType === 'Personal' || capsuleType === 'Public' ) {
-        const response = await handleCreateCapsule(formData);
+      }
+    } else if (capsuleType === 'Personal' || capsuleType === 'Public') {
+      const response = await handleCreateCapsule(formData);
+      
+      if (response) {
         Toast.show({
           type: 'success',
           text1: 'Capsule Created Successfully!',
@@ -328,26 +349,27 @@ if (capsuleInfo.fileUri) {
         setTimeout(() => {
           navigation.navigate('Tab');
         }, 500);
-      } else if (capsuleType === 'Shared') {
-        navigation.navigate('SendCapsulePage');
       }
-
-    } catch (error) {
-      console.error('Capsule creation failed:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      
-      let errorMessage = 'Failed to create capsule. Try again.';
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert('Error', errorMessage);
+    } else if (capsuleType === 'Shared') {
+      navigation.navigate('SendCapsulePage');
     }
-  };
 
-  const isCreateButtonDisabled = () => {
+  } catch (error) {
+    console.error('Capsule creation failed:', error);
+    console.error('Error details:', error.response?.data || error.message);
+    
+    let errorMessage = 'Failed to create capsule. Try again.';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    Alert.alert('Error', errorMessage);
+  }
+};
+
+const isCreateButtonDisabled = () => {
     return loading ||
       isCheckingFriends ||
       (capsuleType === 'Shared' && friends.length === 0) ||
@@ -558,7 +580,8 @@ if (capsuleInfo.fileUri) {
 
       {isNestedCapsule && selectedParentCapsule && (
         <View style={styles.selectedParentCapsuleInfo}>
-          <Text style={styles.selectedParentCapsuleTitle}>Selected Parent Capsule:</Text>
+          <Text style={styles.selectedParentCapsuleTitle}>Selected Parent Capsule: </Text>
+         
           <Text style={styles.selectedParentCapsuleDetails}>
             Title: {selectedParentCapsule.Title}
           </Text>

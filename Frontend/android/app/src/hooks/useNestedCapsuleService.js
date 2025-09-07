@@ -47,100 +47,96 @@ const useNestedCapsuleService = () => {
     }
   };
 
-  const handleCreateNestedCapsule = async (capsuleInfoOrFormData) => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
+const handleCreateNestedCapsule = async (formData) => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
 
-      if (!token) {
-        Toast.show({
-          type: 'error',
-          text1: 'Authentication Error',
-          text2: 'Please log in again.',
-        });
-        return;
-      }
-
-      let formData;
-      
-      // Check if we're receiving FormData (for multiple files) or capsuleInfo object
-      if (capsuleInfoOrFormData instanceof FormData) {
-        formData = capsuleInfoOrFormData;
-      } else {
-        // Handle the original capsuleInfo object format
-        const capsuleInfo = capsuleInfoOrFormData;
-        formData = new FormData();
-        formData.append('title', capsuleInfo.title);
-        formData.append('description', capsuleInfo.description);
-        formData.append('capsuleType', capsuleInfo.capsuleType);
-        formData.append('parentCapsuleId', capsuleInfo.parentCapsuleId);
-
-        if (capsuleInfo.mediaType) {
-          formData.append('mediaType', capsuleInfo.mediaType);
-        }
-
-        if (capsuleInfo.fileUri) {
-          const fileName = capsuleInfo.fileUri.split('/').pop();
-          const mediaType = capsuleInfo.mediaType || 'photo'; 
-          const fileType = getFileType(capsuleInfo.fileUri, mediaType);
-          
-          formData.append('files', {
-            uri: capsuleInfo.fileUri,
-            name: fileName,
-            type: fileType,
-          });
-
-          console.log(`Uploading ${mediaType} file:`, {
-            fileName,
-            fileType,
-            mediaType
-          });
-        } else {
-          Toast.show({
-            type: 'error',
-            text1: 'Media Error',
-            text2: 'No valid media file provided.',
-          });
-          return;
-        }
-      }
-
-      const response = await axiosInstance.post('/api/nestedcapsules/create', formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 30000, 
-      });
-
-      Toast.show({
-        type: 'success',
-        text1: 'Nested Capsule Created',
-        text2: 'Your nested capsule has been created successfully.',
-      });
-
-      return response.data;
-
-    } catch (error) {
-      console.error('Error creating nested capsule:', error);
-      
-      let message = 'An error occurred while creating the nested capsule.';
-      
-      if (error.code === 'ECONNABORTED') {
-        message = 'Upload timeout. Please check your connection and try again.';
-      } else if (error.response) {
-        message = error.response.data?.message || `Server error: ${error.response.status}`;
-      } else if (error.request) {
-        message = 'Network error. Please check your connection.';
-      }
-      
+    if (!token) {
       Toast.show({
         type: 'error',
-        text1: 'Error Creating Nested Capsule',
-        text2: message,
+        text1: 'Authentication Error',
+        text2: 'Please log in again.',
       });
-      throw error;
+      return;
     }
-  };
+
+    // Validate that we received FormData
+    if (!(formData instanceof FormData)) {
+      console.error('Expected FormData but received:', typeof formData);
+      Toast.show({
+        type: 'error',
+        text1: 'Data Error',
+        text2: 'Invalid data format provided.',
+      });
+      return;
+    }
+
+    // Debug: Log what we're sending to the server
+    console.log('Sending nested capsule request to:', '/api/nestedcapsules/create');
+    console.log('Request headers:', {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    });
+    
+    // Debug FormData contents
+    if (formData._parts) {
+      console.log('FormData contents being sent to nested capsule API:');
+      formData._parts.forEach(([key, value]) => {
+        if (key === 'files') {
+          console.log(`${key}:`, { uri: value.uri, name: value.name, type: value.type });
+        } else {
+          console.log(`${key}:`, value);
+        }
+      });
+    }
+
+    const response = await axiosInstance.post('/api/nestedcapsules/create', formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 30000, 
+    });
+
+    console.log('Nested capsule creation response:', response.data);
+
+    Toast.show({
+      type: 'success',
+      text1: 'Nested Capsule Created',
+      text2: 'Your nested capsule has been created successfully.',
+    });
+
+    return response.data;
+
+  } catch (error) {
+    console.error('Error creating nested capsule:', error);
+    
+    let message = 'An error occurred while creating the nested capsule.';
+    
+    if (error.code === 'ECONNABORTED') {
+      message = 'Upload timeout. Please check your connection and try again.';
+    } else if (error.response) {
+      console.error('Server response error:', {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+      message = error.response.data?.message || `Server error: ${error.response.status}`;
+    } else if (error.request) {
+      console.error('Network request error:', error.request);
+      message = 'Network error. Please check your connection.';
+    } else {
+      console.error('General error:', error.message);
+    }
+    
+    Toast.show({
+      type: 'error',
+      text1: 'Error Creating Nested Capsule',
+      text2: message,
+    });
+    throw error;
+  }
+};
 
   const getNestedCapsules = async (parentCapsuleId) => {
     try {

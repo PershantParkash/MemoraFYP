@@ -651,6 +651,10 @@ const CommunityHomeCapsule = () => {
           </Text>
         </View>
 
+        <Text style={styles.dateText}>
+            {item._id}
+          </Text>
+
         {/* Unlock Date */}
         {/* <View style={styles.dateContainer}>
           <MaterialIcons name="lock-clock" size={16} color="#666" />
@@ -1043,9 +1047,9 @@ const CommunityHomeCapsule = () => {
                 <Text style={styles.subHeaderText}>
                   Discover and explore public memories shared by the community.
                 </Text>
-                <Text style={styles.subHeaderText} onPress={()=> {  navigation.navigate('Home'); }}>
+                {/* <Text style={styles.subText} onPress={()=> { navigation.navigate('Home'); }}>
                  View Your Capsules
-                </Text>
+                </Text> */}
               </View>
               <View style={{ marginLeft: 10, minWidth: 40, minHeight: 40, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 8, overflow: 'hidden', backgroundColor: THEME.communityDark }}>
                 <Picker
@@ -1060,6 +1064,9 @@ const CommunityHomeCapsule = () => {
                 </Picker>
               </View>
             </View>
+ <Text style={styles.subText} onPress={()=> { navigation.navigate('Home'); }}>
+                 View Your Capsules
+                </Text>
           </GradientComponent>
 
           {renderContent()}
@@ -1103,6 +1110,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#e0e0e0',
     textAlign: 'center',
+   
+  },
+  subText:{
+    fontSize: 14,
+    color: '#e0e0e0',
+    textAlign: 'center',
+    backgroundColor:"#997be0ff",
+     padding:10,
+     borderRadius:6,
+     marginTop:10
   },
   listContainer: {
     paddingBottom: 20,
