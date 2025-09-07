@@ -154,6 +154,7 @@ export const getCapsules = async (req, res) => {
     });
   }
 };
+
 export const createTimeCapsule = async (req, res) => {
   try {
     const { title, description, unlockDate, capsuleType, friends, lat, lng } = req.body;
