@@ -356,93 +356,93 @@ export const getPublicCapsules = async (req, res) => {
   }
 };
 
-// export const getPublicCapsules = async (req, res) => {
-//   try {
-//     const currentDate = new Date();
-//     const userId = req.userId; // From auth middleware
+export const updateAllCapsulesStatus = async (req, res) => {
+  try {
+    const currentDate = new Date();
+    
+    // Update TimeCapsules
+    const timeCapsuleUpdates = await TimeCapsule.bulkWrite([
+      // Update capsules that should be unlocked
+      {
+        updateMany: {
+          filter: { 
+            UnlockDate: { $lt: currentDate },
+            Status: 'Locked'
+          },
+          update: { Status: 'Open' }
+        }
+      },
+      // Update capsules that should be locked (in case unlock date was changed)
+      {
+        updateMany: {
+          filter: { 
+            UnlockDate: { $gte: currentDate },
+            Status: 'Open'
+          },
+          update: { Status: 'Locked' }
+        }
+      }
+    ]);
 
-//     // Find all capsules with CapsuleType = "Public"
-//     const publicCapsules = await TimeCapsule.find({ CapsuleType: 'Public' })
-//       .populate({ path: 'UserID', model: 'User' });
+    // Get all parent capsules that are now unlocked to update nested capsules
+    const unlockedParentCapsules = await TimeCapsule.find({
+      UnlockDate: { $lt: currentDate },
+      Status: 'Open'
+    }).select('_id');
 
-//     // Get all unique creator IDs
-//     const creatorIds = [...new Set(publicCapsules.map(capsule => capsule.UserID._id))];
+    const unlockedParentIds = unlockedParentCapsules.map(capsule => capsule._id);
 
-//     // Fetch profiles for all creators
-//     const creatorProfiles = await Profile.find({ userId: { $in: creatorIds } });
+    // Get all parent capsules that are locked to lock nested capsules
+    const lockedParentCapsules = await TimeCapsule.find({
+      UnlockDate: { $gte: currentDate },
+      Status: 'Locked'
+    }).select('_id');
 
-//     // Get capsule IDs for likes and comments aggregation
-//     const capsuleIds = publicCapsules.map(capsule => capsule._id);
+    const lockedParentIds = lockedParentCapsules.map(capsule => capsule._id);
 
-//     // Get likes count for each capsule
-//     const likesAggregation = await Like.aggregate([
-//       { $match: { TimeCapsuleID: { $in: capsuleIds } } },
-//       { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
-//     ]);
+    // Update NestedCapsules based on their parent status
+    const nestedCapsuleUpdates = await NestedCapsule.bulkWrite([
+      // Unlock nested capsules whose parents are unlocked
+      {
+        updateMany: {
+          filter: { 
+            ParentCapsuleId: { $in: unlockedParentIds },
+            Status: 'Locked'
+          },
+          update: { Status: 'Open' }
+        }
+      },
+      // Lock nested capsules whose parents are locked
+      {
+        updateMany: {
+          filter: { 
+            ParentCapsuleId: { $in: lockedParentIds },
+            Status: 'Open'
+          },
+          update: { Status: 'Locked' }
+        }
+      }
+    ]);
 
-//     // Get comments count for each capsule
-//     const commentsAggregation = await Comment.aggregate([
-//       { $match: { TimeCapsuleID: { $in: capsuleIds } } },
-//       { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
-//     ]);
+    // Calculate results
+    const timeCapsuleUnlocked = timeCapsuleUpdates[0]?.modifiedCount || 0;
+    const timeCapsuleLocked = timeCapsuleUpdates[1]?.modifiedCount || 0;
+    const nestedCapsuleUnlocked = nestedCapsuleUpdates[0]?.modifiedCount || 0;
+    const nestedCapsuleLocked = nestedCapsuleUpdates[1]?.modifiedCount || 0;
 
-//     // Get user's likes for these capsules
-//     const userLikes = await Like.find({
-//       UserID: userId,
-//       TimeCapsuleID: { $in: capsuleIds }
-//     });
+    res.status(200).json({
+      success: true,
+      message: 'Capsule status update completed successfully',
+      executedAt: currentDate.toISOString()
+    });
 
-//     // Create lookup maps
-//     const profileMap = {};
-//     creatorProfiles.forEach(profile => {
-//       profileMap[profile.userId.toString()] = profile;
-//     });
+  } catch (error) {
+    console.error('Error updating capsule statuses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred while updating capsule statuses',
+      error: error.message,
+    });
+  }
+};
 
-//     const likesCountMap = {};
-//     likesAggregation.forEach(like => {
-//       likesCountMap[like._id.toString()] = like.count;
-//     });
-
-//     const commentsCountMap = {};
-//     commentsAggregation.forEach(comment => {
-//       commentsCountMap[comment._id.toString()] = comment.count;
-//     });
-
-//     const userLikesMap = {};
-//     userLikes.forEach(like => {
-//       userLikesMap[like.TimeCapsuleID.toString()] = true;
-//     });
-
-//     // Update capsule status and add interaction data
-//     const updatedCapsules = publicCapsules.map(capsule => {
-//       const capsuleData = { ...capsule._doc };
-//       if (new Date(capsule.UnlockDate) < currentDate) {
-//         capsuleData.Status = 'Open';
-//       }
-      
-//       const capsuleId = capsule._id.toString();
-      
-//       return {
-//         ...capsuleData,
-//         CreatedBy: capsule.UserID, // full user info
-//         CreatorProfile: profileMap[capsule.UserID._id.toString()] || null, // profile info
-//         IsShared: false,
-//         NestedCapsules: [], // public capsules won't have nested ones
-//         LikesCount: likesCountMap[capsuleId] || 0,
-//         CommentsCount: commentsCountMap[capsuleId] || 0,
-//         IsLikedByUser: userLikesMap[capsuleId] || false
-//       };
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       capsules: updatedCapsules,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: 'An error occurred while fetching public capsules',
-//       error: error.message,
-//     });
-//   }
-// };
