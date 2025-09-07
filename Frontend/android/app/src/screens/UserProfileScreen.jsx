@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   Platform,
   TextInput,
   Alert,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -31,6 +32,22 @@ import { useFocusEffect } from '@react-navigation/native';
 import useFriendService from '../hooks/useFriendService';
 import moment from 'moment';
 
+// Try to import optional dependencies
+let Video = null;
+let LinearGradient = null;
+
+try {
+  Video = require('react-native-video').default;
+} catch (e) {
+  console.log('react-native-video not installed');
+}
+
+try {
+  LinearGradient = require('react-native-linear-gradient').default;
+} catch (e) {
+  console.log('react-native-linear-gradient not installed');
+}
+
 const { width } = Dimensions.get('window');
 
 const THEME = {
@@ -45,6 +62,15 @@ const THEME = {
   like: '#FF3040',
   comment: '#4A90E2',
 };
+
+// Fallback component for LinearGradient
+const FallbackGradient = ({ children, style, colors }) => (
+  <View style={[style, { backgroundColor: colors?.[0] || '#000' }]}>
+    {children}
+  </View>
+);
+
+const GradientComponent = LinearGradient || FallbackGradient;
 
 const UserProfileScreen = () => {
   const navigation = useNavigation();
@@ -67,7 +93,8 @@ const UserProfileScreen = () => {
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   
-  // Comments modal states
+  // Media and Modal states
+  const [selectedMedia, setSelectedMedia] = useState(null);
   const [selectedCapsule, setSelectedCapsule] = useState(null);
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
   const [comments, setComments] = useState([]);
@@ -76,6 +103,21 @@ const UserProfileScreen = () => {
   const [loadingLike, setLoadingLike] = useState({});
   const [commentPage, setCommentPage] = useState(1);
   const [hasMoreComments, setHasMoreComments] = useState(false);
+  
+  // Emotional Connection Modal
+  const [isEmotionalConnectionModalVisible, setIsEmotionalConnectionModalVisible] = useState(false);
+
+  // Media playback states
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+
+  const waveAnimation = useRef(new Animated.Value(1)).current;
+  const videoRef = useRef(null);
+  const audioRef = useRef(null);
   
   const { userId, context } = route.params || {};
   
@@ -86,6 +128,269 @@ const UserProfileScreen = () => {
       addToHistory('UserProfile');
     }, [addToHistory])
   );
+
+  // Media helper functions
+  const getFileExtension = (filename) => {
+    if (!filename) return '';
+    return filename.split('.').pop().toLowerCase();
+  };
+
+  const getMediaType = (filename) => {
+    const extension = getFileExtension(filename);
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return 'image';
+      case 'mov':
+      case 'mp4':
+      case 'avi':
+        return 'video';
+      case 'wav':
+      case 'mp3':
+      case 'm4a':
+      case 'aac':
+        return 'audio';
+      default:
+        return 'unknown';
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const toggleVideoPlayback = () => {
+    setIsVideoPlaying(!isVideoPlaying);
+  };
+
+  const toggleAudioPlayback = () => {
+    if (!Video) {
+      console.log('Video library not available for audio playback');
+      return;
+    }
+    setIsAudioPlaying(!isAudioPlaying);
+  };
+
+  // Animation effect for audio waveform
+  useEffect(() => {
+    if (isAudioPlaying) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(waveAnimation, {
+            toValue: 1.5,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(waveAnimation, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      waveAnimation.setValue(1);
+    }
+  }, [isAudioPlaying]);
+
+  // Media rendering function
+  const renderMediaContent = (mediaFile) => {
+    const mediaType = getMediaType(mediaFile);
+    const mediaUrl = `${Config.API_BASE_URL}/uploads/${mediaFile}`;
+
+    switch (mediaType) {
+      case 'image':
+        return (
+          <Image
+            source={{ uri: mediaUrl }}
+            style={styles.mediaImage}
+            resizeMode="contain"
+          />
+        );
+        
+      case 'video':
+        return (
+          <View style={styles.videoContainer}>
+            {Video ? (
+              <>
+                <Video
+                  ref={videoRef}
+                  source={{ uri: mediaUrl }}
+                  style={styles.mediaVideo}
+                  paused={!isVideoPlaying}
+                  resizeMode="contain"
+                  onLoad={(data) => {
+                    setVideoDuration(data.duration);
+                  }}
+                  onProgress={(data) => {
+                    setVideoProgress(data.currentTime);
+                  }}
+                  onEnd={() => {
+                    setIsVideoPlaying(false);
+                    setVideoProgress(0);
+                  }}
+                  onError={(error) => {
+                    console.log('Video playback error:', error);
+                  }}
+                />
+                
+                <TouchableOpacity style={styles.videoOverlay} onPress={toggleVideoPlayback}>
+                  <View style={styles.videoControls}>
+                    <MaterialIcons 
+                      name={isVideoPlaying ? "pause" : "play-arrow"} 
+                      size={80} 
+                      color="rgba(255,255,255,0.9)" 
+                    />
+                  </View>
+                </TouchableOpacity>
+                
+                {videoDuration > 0 && (
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBar}>
+                      <View 
+                        style={[
+                          styles.progressFill, 
+                          { width: `${(videoProgress / videoDuration) * 100}%` }
+                        ]} 
+                      />
+                    </View>
+                    <Text style={styles.timeText}>
+                      {formatTime(Math.floor(videoProgress))} / {formatTime(Math.floor(videoDuration))}
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.mediaFallback}>
+                <MaterialIcons name="play-circle-filled" size={120} color={THEME.primary} />
+                <Text style={styles.mediaText}>Video File</Text>
+                <Text style={styles.fallbackText}>Install react-native-video for preview</Text>
+              </View>
+            )}
+          </View>
+        );
+        
+      case 'audio':
+        return (
+          <GradientComponent colors={[THEME.primary, THEME.primaryDark]} style={styles.audioContainer}>
+            {Video && (
+              <Video
+                ref={audioRef}
+                source={{ uri: mediaUrl }}
+                style={{ width: 0, height: 0 }}
+                paused={!isAudioPlaying}
+                onLoad={(data) => {
+                  setAudioDuration(data.duration);
+                }}
+                onProgress={(data) => {
+                  setAudioProgress(data.currentTime);
+                }}
+                onEnd={() => {
+                  setIsAudioPlaying(false);
+                  setAudioProgress(0);
+                }}
+                onError={(error) => {
+                  console.log('Audio playback error:', error);
+                  setIsAudioPlaying(false);
+                }}
+              />
+            )}
+            
+            <View style={styles.audioVisualization}>
+              <MaterialIcons name="audiotrack" size={120} color="white" />
+              
+              <View style={styles.waveformContainer}>
+                {[...Array(20)].map((_, i) => (
+                  <Animated.View 
+                    key={i}
+                    style={[
+                      styles.waveformBar,
+                      { 
+                        height: Math.random() * 40 + 20,
+                        opacity: isAudioPlaying ? 1 : 0.5,
+                        transform: [{ 
+                          scaleY: isAudioPlaying ? 
+                            Animated.multiply(waveAnimation, 1 + Math.random() * 0.5) : 1 
+                        }]
+                      }
+                    ]} 
+                  />
+                ))}
+              </View>
+              
+              <Text style={styles.audioFileName}>{mediaFile}</Text>
+              
+              {Video ? (
+                <>
+                  <TouchableOpacity style={styles.audioPlayButton} onPress={toggleAudioPlayback}>
+                    <MaterialIcons 
+                      name={isAudioPlaying ? "pause" : "play-arrow"} 
+                      size={50} 
+                      color="white" 
+                    />
+                  </TouchableOpacity>
+                  
+                  {audioDuration > 0 && (
+                    <View style={styles.audioProgressContainer}>
+                      <View style={styles.progressBar}>
+                        <View 
+                          style={[
+                            styles.progressFill, 
+                            { width: `${(audioProgress / audioDuration) * 100}%` }
+                          ]} 
+                        />
+                      </View>
+                      <Text style={styles.timeText}>
+                        {formatTime(Math.floor(audioProgress))} / {formatTime(Math.floor(audioDuration))}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.fallbackText}>
+                  Audio File Recorded{'\n'}
+                  Install react-native-video for preview
+                </Text>
+              )}
+            </View>
+          </GradientComponent>
+        );
+        
+      default:
+        return (
+          <View style={styles.unsupportedContainer}>
+            <FontAwesome name="file-o" size={80} color="white" />
+            <Text style={styles.unsupportedText}>
+              Unsupported media type: {getFileExtension(mediaFile)}
+            </Text>
+            <Text style={styles.unsupportedSubText}>{mediaFile}</Text>
+          </View>
+        );
+    }
+  };
+
+  const closeMedia = () => {
+    setIsVideoPlaying(false);
+    setIsAudioPlaying(false);
+    setVideoProgress(0);
+    setVideoDuration(0);
+    setAudioProgress(0);
+    setAudioDuration(0);
+    setSelectedMedia(null);
+  };
+
+  const handleEmotionalConnectionPress = (capsule) => {
+    setSelectedCapsule(capsule);
+    setIsEmotionalConnectionModalVisible(true);
+  };
+
+  const handleCloseEmotionalConnectionModal = () => {
+    setIsEmotionalConnectionModalVisible(false);
+    setSelectedCapsule(null);
+  };
 
   // Toggle like function
   const toggleLike = async (capsuleId) => {
@@ -516,28 +821,128 @@ const UserProfileScreen = () => {
     }
   }, [userId]);
 
-  // Render capsule item with likes and comments
+  // Cleanup on unmount
+  useEffect(() => {
+    console.log('UserProfileScreen mounted');
+    return () => {
+      console.log('UserProfileScreen unmounting - cleaning up state');
+      setIsCommentsModalVisible(false);
+      setSelectedCapsule(null);
+      setComments([]);
+      setLoadingLike({});
+      setIsVideoPlaying(false);
+      setIsAudioPlaying(false);
+      setSelectedMedia(null);
+    };
+  }, []);
+
+  // Enhanced capsule rendering with media support and nested capsules
   const renderCapsuleItem = ({ item }) => (
-    <View style={styles.capsuleItem}>
-      <View style={styles.capsuleHeader}>
-        <Text style={styles.capsuleTitle}>{item.Title || 'Untitled Capsule'}</Text>
-        <Text style={styles.capsuleDate}>
-          {new Date(item.UnlockDate).toLocaleDateString('en-US', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
+    <View style={styles.capsuleContainer}>
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>{item.Title || 'Untitled Capsule'}</Text>
+        <View style={styles.statusContainer}>
+          <FontAwesome
+            name={item.IsPublic ? "globe" : "user"}
+            size={18}
+            color={item.IsPublic ? THEME.primary : '#666'}
+            style={styles.publicIcon}
+          />
+          <FontAwesome
+            name={item.Status === 'Locked' ? 'lock' : 'unlock'}
+            size={20}
+            color={item.Status === 'Locked' ? THEME.error : THEME.success}
+          />
+        </View>
+      </View>
+
+      {/* Emotional Connection Button */}
+      {item.Description && item.Description.trim() !== '' && (
+        <TouchableOpacity
+          style={[styles.emotionalConnectionButton, { backgroundColor: THEME.primary }]}
+          onPress={() => handleEmotionalConnectionPress(item)}
+        >
+          <MaterialIcons name="chat" size={16} color="white" />
+          <Text style={styles.emotionalConnectionText}>💬 Emotional Message</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Creation Date */}
+      <View style={styles.dateContainer}>
+        <MaterialIcons name="schedule" size={16} color="#666" />
+        <Text style={styles.dateText}>
+          Created: {moment(item.CreatedAt).format('MMM DD, YYYY')}
         </Text>
       </View>
-      <Text style={styles.capsuleDescription} numberOfLines={2}>
-        {item.Description || 'No description available'}
-      </Text>
-      <View style={styles.capsuleFooter}>
-        <View style={[styles.statusBadge, { backgroundColor: item.Status === 'Open' ? '#4CAF50' : '#FF9800' }]}>
-          <Text style={styles.statusText}>{item.Status}</Text>
+
+      {/* Recipient Information */}
+      {item.RecipientName && (
+        <View style={styles.dateContainer}>
+          <MaterialIcons name="person" size={16} color="#666" />
+          <Text style={styles.dateText}>
+            Recipient: {item.RecipientName}
+          </Text>
         </View>
-        <Text style={styles.capsuleType}>Public</Text>
-      </View>
+      )}
+
+      {/* Media Type Indicator */}
+      {item.Media && (
+        <View style={styles.mediaTypeContainer}>
+          <MaterialIcons
+            name={
+              getMediaType(item.Media) === 'image'
+                ? 'photo'
+                : getMediaType(item.Media) === 'video'
+                ? 'videocam'
+                : getMediaType(item.Media) === 'audio'
+                ? 'audiotrack'
+                : 'insert-drive-file'
+            }
+            size={16}
+            color="#666"
+          />
+          <Text style={styles.mediaTypeText}>
+            {getMediaType(item.Media).charAt(0).toUpperCase() + 
+             getMediaType(item.Media).slice(1)} File
+          </Text>
+        </View>
+      )}
+
+      {/* Nested Capsules Section */}
+      {item.NestedCapsules && item.NestedCapsules.length > 0 && (
+        <View style={styles.nestedCapsulesContainer}>
+          <Text style={styles.nestedCapsulesTitle}>Nested Capsules ({item.NestedCapsules.length})</Text>
+          {item.NestedCapsules.map((nestedCapsule, index) => (
+            <View key={nestedCapsule._id || index} style={styles.nestedCapsuleItem}>
+              <View style={styles.nestedCapsuleHeader}>
+                <Text style={styles.nestedCapsuleTitle}>{nestedCapsule.Title}</Text>
+                <FontAwesome
+                  name={nestedCapsule.Status === 'Locked' ? 'lock' : 'unlock'}
+                  size={16}
+                  color={nestedCapsule.Status === 'Locked' ? THEME.error : THEME.success}
+                />
+              </View>
+              {nestedCapsule.Description && (
+                <Text style={styles.nestedCapsuleDescription}>
+                  {nestedCapsule.Description}
+                </Text>
+              )}
+              {nestedCapsule.Status === 'Open' ? (
+                <TouchableOpacity
+                  style={[styles.nestedCapsuleButton, { backgroundColor: THEME.primary }]}
+                  onPress={() => setSelectedMedia(nestedCapsule.Media)}
+                >
+                  <Text style={styles.nestedCapsuleButtonText}>View Nested Capsule</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.nestedCapsuleLockedText}>
+                  Locked (unlocks with parent)
+                </Text>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Likes and Comments Section */}
       <View style={styles.interactionSection}>
@@ -587,6 +992,24 @@ const UserProfileScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Action Button */}
+      {item.Status === 'Open' ? (
+        <TouchableOpacity
+          style={[styles.viewButton, { backgroundColor: THEME.primary }]}
+          onPress={() => setSelectedMedia(item.Media)}
+        >
+          <MaterialIcons name="visibility" size={20} color="white" />
+          <Text style={styles.buttonText}>View Capsule Media</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={[styles.lockedButton, { backgroundColor: THEME.error }]}>
+          <MaterialIcons name="lock" size={20} color="white" />
+          <Text style={styles.buttonText}>
+            Unlocks: {moment(item.UnlockDate).format('MMM DD, YYYY')}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -711,6 +1134,33 @@ const UserProfileScreen = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+    </Modal>
+  );
+
+  // Render emotional connection modal
+  const renderEmotionalConnectionModal = () => (
+    <Modal
+      visible={isEmotionalConnectionModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={handleCloseEmotionalConnectionModal}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Emotional Message</Text>
+          <ScrollView style={styles.modalScrollView}>
+            <Text style={styles.modalDescription}>
+              {selectedCapsule?.Description || 'No emotional message available.'}
+            </Text>
+          </ScrollView>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: THEME.primary }]}
+            onPress={handleCloseEmotionalConnectionModal}
+          >
+            <Text style={styles.modalButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 
@@ -856,95 +1306,111 @@ const UserProfileScreen = () => {
     <SafeAreaView style={styles.mainContainer}>
       <StatusBar barStyle="light-content" backgroundColor="#6BAED6" />
       
-      {/* Header with Profile Info */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        <View style={styles.profileSection}>
-          <View style={styles.imageContainer}>
-            <Image
-              source={{
-                uri: profileData?.profilePicture 
-                  ? `${Config.API_BASE_URL}/uploads/${profileData.profilePicture}`
-                  : 'https://via.placeholder.com/100'
-              }}
-              style={styles.profileImage}
-            />
-          </View>
-
-          <Text style={styles.username}>{profileData?.username}</Text>
-          <Text style={styles.bio}>{profileData?.bio || `No bio added yet`}</Text>
-
-          {/* Stats Row */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{capsules.length}</Text>
-              <Text style={styles.statLabel}>Public Capsules</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{friends.length}</Text>
-              <Text style={styles.statLabel}>Friends</Text>
-            </View>
-          </View>
+      {selectedMedia ? (
+        <View style={styles.mediaContainer}>
+          {renderMediaContent(selectedMedia)}
+          <TouchableOpacity
+            style={[styles.closeButton, { backgroundColor: THEME.error }]}
+            onPress={closeMedia}
+          >
+            <MaterialIcons name="close" size={24} color="white" />
+            <Text style={styles.buttonText}>Close</Text>
+          </TouchableOpacity>
         </View>
+      ) : (
+        <>
+          {/* Header with Profile Info */}
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
-        {/* Action Buttons */}
-        {renderActionButtons()}
-      </View>
+            <View style={styles.profileSection}>
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{
+                    uri: profileData?.profilePicture 
+                      ? `${Config.API_BASE_URL}/uploads/${profileData.profilePicture}`
+                      : 'https://via.placeholder.com/100'
+                  }}
+                  style={styles.profileImage}
+                />
+              </View>
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'capsules' && styles.activeTab]}
-          onPress={() => setActiveTab('capsules')}
-        >
-          <Ionicons 
-            name="archive-outline" 
-            size={20} 
-            color={activeTab === 'capsules' ? '#6BAED6' : '#999999'} 
-          />
-          <Text style={[styles.tabText, activeTab === 'capsules' && styles.activeTabText]}>
-            Capsules
-          </Text>
-        </TouchableOpacity>
+              <Text style={styles.username}>{profileData?.username}</Text>
+              <Text style={styles.bio}>{profileData?.bio || `No bio added yet`}</Text>
 
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
-          onPress={() => setActiveTab('friends')}
-        >
-          <Ionicons 
-            name="people-outline" 
-            size={20} 
-            color={activeTab === 'friends' ? '#6BAED6' : '#999999'} 
-          />
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-            Friends
-          </Text>
-        </TouchableOpacity>
+              {/* Stats Row */}
+              <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{capsules.length}</Text>
+                  <Text style={styles.statLabel}>Public Capsules</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{friends.length}</Text>
+                  <Text style={styles.statLabel}>Friends</Text>
+                </View>
+              </View>
+            </View>
 
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'about' && styles.activeTab]}
-          onPress={() => setActiveTab('about')}
-        >
-          <Ionicons 
-            name="information-circle-outline" 
-            size={20} 
-            color={activeTab === 'about' ? '#6BAED6' : '#999999'} 
-          />
-          <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>
-            About
-          </Text>
-        </TouchableOpacity>
-      </View>
+            {/* Action Buttons */}
+            {renderActionButtons()}
+          </View>
 
-      {/* Tab Content */}
-      <View style={styles.contentContainer}>
-        {renderTabContent()}
-      </View>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'capsules' && styles.activeTab]}
+              onPress={() => setActiveTab('capsules')}
+            >
+              <Ionicons 
+                name="archive-outline" 
+                size={20} 
+                color={activeTab === 'capsules' ? '#6BAED6' : '#999999'} 
+              />
+              <Text style={[styles.tabText, activeTab === 'capsules' && styles.activeTabText]}>
+                Capsules
+              </Text>
+            </TouchableOpacity>
 
-      {/* Comments Modal */}
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
+              onPress={() => setActiveTab('friends')}
+            >
+              <Ionicons 
+                name="people-outline" 
+                size={20} 
+                color={activeTab === 'friends' ? '#6BAED6' : '#999999'} 
+              />
+              <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
+                Friends
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'about' && styles.activeTab]}
+              onPress={() => setActiveTab('about')}
+            >
+              <Ionicons 
+                name="information-circle-outline" 
+                size={20} 
+                color={activeTab === 'about' ? '#6BAED6' : '#999999'} 
+              />
+              <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>
+                About
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Tab Content */}
+          <View style={styles.contentContainer}>
+            {renderTabContent()}
+          </View>
+        </>
+      )}
+
+      {/* Modals */}
+      {renderEmotionalConnectionModal()}
       {renderCommentsModal()}
       
       <Toast />
@@ -1151,62 +1617,133 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-  capsuleItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: 'rgba(107, 174, 214, 0.4)',
-    shadowOffset: { width: 0, height: 2 },
+
+  // Enhanced Capsule Styles
+  capsuleContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: THEME.primary,
   },
-  capsuleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  capsuleTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    flex: 1,
-    marginRight: 12,
-  },
-  capsuleDate: {
-    fontSize: 12,
-    color: '#6BAED6',
-    fontWeight: '500',
-  },
-  capsuleDescription: {
-    fontSize: 14,
-    color: '#666666',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  capsuleFooter: {
+  titleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  capsuleType: {
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  publicIcon: {
+    marginRight: 8,
+  },
+  emotionalConnectionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  emotionalConnectionText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 5,
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dateText: {
     fontSize: 12,
-    color: '#999999',
-    fontWeight: '500',
+    color: '#666',
+    marginLeft: 5,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+  mediaTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
   },
-  statusText: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    textTransform: 'uppercase',
+  mediaTypeText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 5,
+  },
+
+  // Nested Capsules Styles
+  nestedCapsulesContainer: {
+    marginTop: 15,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+  },
+  nestedCapsulesTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#555',
+    marginBottom: 10,
+  },
+  nestedCapsuleItem: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.primary,
+  },
+  nestedCapsuleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  nestedCapsuleTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  nestedCapsuleDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 10,
+  },
+  nestedCapsuleLockedText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+  },
+  nestedCapsuleButton: {
+    paddingVertical: 8,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  nestedCapsuleButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 
   // Interaction Styles
@@ -1253,6 +1790,179 @@ const styles = StyleSheet.create({
   },
   likedButtonText: {
     color: THEME.like,
+  },
+
+  viewButton: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
+    marginTop: 10,
+  },
+  lockedButton: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.7,
+    marginTop: 10,
+  },
+
+  // Media Container Styles
+  mediaContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  mediaImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  mediaVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoControls: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 50,
+    padding: 20,
+  },
+  audioContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioVisualization: {
+    alignItems: 'center',
+  },
+  waveformContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginVertical: 30,
+    height: 60,
+  },
+  waveformBar: {
+    width: 4,
+    backgroundColor: 'white',
+    marginHorizontal: 2,
+    borderRadius: 2,
+  },
+  audioFileName: {
+    fontSize: 16,
+    color: 'white',
+    marginVertical: 20,
+    textAlign: 'center',
+  },
+  audioPlayButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  audioProgressContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+    width: '80%',
+  },
+  progressContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+  },
+  progressBar: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: THEME.primary,
+  },
+  timeText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  mediaFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+  },
+  unsupportedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+  },
+  mediaText: {
+    fontSize: 18,
+    color: 'white',
+    marginTop: 20,
+    fontWeight: '600',
+  },
+  unsupportedText: {
+    fontSize: 16,
+    color: '#ccc',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  unsupportedSubText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  fallbackText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 20,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  closeButton: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    elevation: 5,
   },
 
   friendItem: {
@@ -1490,6 +2200,59 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 5,
     textAlign: 'center',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: '85%',
+    maxHeight: '70%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  modalScrollView: {
+    maxHeight: 200,
+    width: '100%',
+  },
+
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });
 
