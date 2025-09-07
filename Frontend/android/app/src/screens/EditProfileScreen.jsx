@@ -20,6 +20,7 @@ import Toast from 'react-native-toast-message';
 import useProfileService from '../hooks/useProfileService';
 import { MyContext } from '../context/MyContext';
 
+import Icon from 'react-native-vector-icons/Ionicons';
 const { width } = Dimensions.get('window');
 
 const EditProfileScreen = () => {
@@ -172,9 +173,13 @@ const EditProfileScreen = () => {
       >
         {/* Header Section */}
         <View style={styles.headerSection}>
+          
           <View style={styles.headerGradient}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                    <Icon name="chevron-back" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
             <Text style={styles.headerTitle}>Edit Profile</Text>
-            <Text style={styles.headerSubtitle}>Update your information</Text>
+            {/* <Text style={styles.headerSubtitle}>Update your information</Text> */}
           </View>
         </View>
 
@@ -422,7 +427,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom:"10px"
+    marginBottom:"20px"
   },
   headerSubtitle: {
     fontSize: 16,
@@ -607,6 +612,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#B2C3F7',
     shadowOpacity: 0,
     elevation: 0,
+  },
+  backButton: {
+    position:"absolute",
+    top:20,
+    left:20,
+    padding: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

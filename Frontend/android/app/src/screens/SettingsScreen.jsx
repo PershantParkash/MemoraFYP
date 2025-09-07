@@ -82,7 +82,7 @@ const SettingsScreen = () => {
   };
 
   const goToEditProfile = () => {
-    // navigation.navigate('EditProfileScreen');
+    navigation.navigate('EditProfileScreen');
   };
 
   const goToChangePassword = () => {

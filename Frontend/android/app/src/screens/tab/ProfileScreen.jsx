@@ -1218,7 +1218,7 @@ useEffect(() => {
               <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.settingsButton} onPress={goToEditProfile}>
+            <TouchableOpacity style={styles.settingsButton} onPress={()=>{ navigation.navigate('SettingsScreen'); }}>
               <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
 

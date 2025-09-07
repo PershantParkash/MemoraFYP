@@ -20,7 +20,6 @@ import Config from 'react-native-config';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import moment from 'moment';
-// import useCapsuleService from '../../hooks/useCapsuleService'
 import useCapsuleService from '../hooks/useCapsuleService'
 import useBackButtonHandler from '../hooks/useBackButtonHandler';
 import { Picker } from '@react-native-picker/picker';
@@ -28,6 +27,8 @@ import { useNavigationContext } from '../context/NavigationContext';
 import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 
 let Video = null;
 let LinearGradient = null;
@@ -74,6 +75,7 @@ const CapsulePage = () => {
   const [error, setError] = useState(null);
   const { addToHistory } = useNavigationContext();
   
+    const navigation = useNavigation();
   // Comments and Likes states
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
   const [selectedCapsule, setSelectedCapsule] = useState(null);
@@ -1266,8 +1268,13 @@ const CapsulePage = () => {
             colors={[THEME.primary, THEME.primaryDark]} 
             style={styles.headerContainer}
           >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                                    <Icon name="chevron-back" size={24} color="#FFFFFF" />
+                                  </TouchableOpacity>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}> 
+              
               <View style={{ flex: 1 }}>
+               
                 <Text style={styles.headerText}>My Time Capsules</Text>
                 <Text style={styles.subHeaderText}>
                   Explore and revisit your memories or unlock shared moments.
@@ -1327,6 +1334,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
+    // marginTop: 20,
     marginBottom: 10,
   },
   subHeaderText: {
@@ -1424,8 +1432,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 5,
   },
-
-  // Interaction Styles
   interactionSection: {
     marginTop: 15,
     paddingTop: 15,
@@ -1972,5 +1978,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+   backButton: {
+    position:"absolute",
+    top:6,
+    left:6,
+    padding: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 8,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
