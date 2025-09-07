@@ -14,7 +14,6 @@ import fs from 'fs';
 import { uploadSingleFile, uploadMultipleFiles } from './middlewares/fileUploadMiddleware.js';
 import timeCapsuleRoutes from './routes/timeCapsuleRoutes.js';
 import nestedCapsuleRoutes from './routes/nestedCapsuleRoutes.js';
-
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 

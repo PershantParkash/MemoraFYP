@@ -805,7 +805,6 @@ const CapsulePage = () => {
           />
         </View>
 
-        {/* Emotional Connection Button */}
         {item.Description && item.Description.trim() !== '' && (
           <TouchableOpacity
             style={[styles.emotionalConnectionButton, { backgroundColor: THEME.secondary }]}

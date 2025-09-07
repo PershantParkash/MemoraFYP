@@ -101,9 +101,7 @@ const SettingsScreen = () => {
     navigation.navigate('AboutMemoraScreen');
   };
 
-  const goToFeedback = () => {
-    navigation.navigate('FeedbackScreen');
-  };
+  
 
   const showFeatureComingSoon = () => {
     Alert.alert("Coming Soon", "This feature is coming soon!");
@@ -187,13 +185,6 @@ const SettingsScreen = () => {
               <View style={styles.optionLeft}>
                 <Icon name="help-circle-outline" size={20} color="#666" />
                 <Text style={styles.optionTextWithIcon}>Help Center</Text>
-              </View>
-              <Icon name="chevron-forward-outline" size={20} color="#888" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.optionRow} onPress={goToFeedback}>
-              <View style={styles.optionLeft}>
-                <Icon name="chatbubble-outline" size={20} color="#666" />
-                <Text style={styles.optionTextWithIcon}>Send Feedback</Text>
               </View>
               <Icon name="chevron-forward-outline" size={20} color="#888" />
             </TouchableOpacity>

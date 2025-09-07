@@ -643,6 +643,43 @@ const CommunityHomeCapsule = () => {
           </TouchableOpacity>
         )}
 
+        
+{/* Nested Capsules */}
+{item.NestedCapsules && item.NestedCapsules.length > 0 && (
+  <View style={styles.nestedCapsulesContainer}>
+    <Text style={styles.nestedCapsulesTitle}>Nested Capsules ({item.NestedCapsules.length})</Text>
+    {item.NestedCapsules.map((nestedCapsule, index) => (
+      <View key={nestedCapsule._id || index} style={styles.nestedCapsuleItem}>
+        <View style={styles.nestedCapsuleHeader}>
+          <Text style={styles.nestedCapsuleTitle}>{nestedCapsule.Title}</Text>
+          <FontAwesome
+            name={nestedCapsule.Status === 'Locked' ? 'lock' : 'unlock'}
+            size={16}
+            color={nestedCapsule.Status === 'Locked' ? THEME.error : THEME.success}
+          />
+        </View>
+        {nestedCapsule.Description && (
+          <Text style={styles.nestedCapsuleDescription}>
+            {nestedCapsule.Description}
+          </Text>
+        )}
+        {nestedCapsule.Status === 'Open' ? (
+          <TouchableOpacity
+            style={[styles.nestedCapsuleButton, { backgroundColor: THEME.community }]}
+            onPress={() => setSelectedMedia(nestedCapsule.Media)}
+          >
+            <Text style={styles.nestedCapsuleButtonText}>View Nested Capsule</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.nestedCapsuleLockedText}>
+            Locked (unlocks with parent)
+          </Text>
+        )}
+      </View>
+    ))}
+  </View>
+)}
+
         {/* Creation Date */}
         <View style={styles.dateContainer}>
           <MaterialIcons name="schedule" size={16} color="#666" />
@@ -1725,4 +1762,56 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
+  nestedCapsulesContainer: {
+  marginTop: 15,
+  paddingHorizontal: 10,
+  paddingBottom: 10,
+},
+nestedCapsulesTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#555',
+  marginBottom: 10,
+},
+nestedCapsuleItem: {
+  backgroundColor: '#f8f9fa',
+  borderRadius: 8,
+  padding: 10,
+  marginBottom: 10,
+  borderWidth: 1,
+  borderColor: '#e0e0e0',
+  borderLeftWidth: 3,
+  borderLeftColor: THEME.community, // Use community theme color instead of primary
+},
+nestedCapsuleHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 5,
+},
+nestedCapsuleTitle: {
+  fontSize: 14,
+  fontWeight: 'bold',
+  color: '#333',
+},
+nestedCapsuleDescription: {
+  fontSize: 12,
+  color: '#666',
+  marginBottom: 10,
+},
+nestedCapsuleLockedText: {
+  fontSize: 12,
+  color: '#999',
+  textAlign: 'right',
+},
+nestedCapsuleButton: {
+  paddingVertical: 8,
+  borderRadius: 5,
+  alignItems: 'center',
+},
+nestedCapsuleButtonText: {
+  color: '#fff',
+  fontSize: 12,
+  fontWeight: 'bold',
+},
 });

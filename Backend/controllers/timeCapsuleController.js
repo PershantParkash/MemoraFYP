@@ -260,6 +260,29 @@ export const getPublicCapsules = async (req, res) => {
     // Get capsule IDs for likes and comments aggregation
     const capsuleIds = publicCapsules.map(capsule => capsule._id);
 
+    // Get nested capsules for all public capsules
+    const nestedCapsules = await NestedCapsule.find({ 
+      ParentCapsuleId: { $in: capsuleIds }
+    });
+
+    // Group nested capsules by parent capsule
+    const nestedCapsulesByParent = {};
+    nestedCapsules.forEach(nestedCapsule => {
+      const parentId = nestedCapsule.ParentCapsuleId.toString();
+      if (!nestedCapsulesByParent[parentId]) {
+        nestedCapsulesByParent[parentId] = [];
+      }
+      
+      // Check if parent capsule is unlocked to determine nested capsule status
+      const parentCapsule = publicCapsules.find(capsule => capsule._id.toString() === parentId);
+      const nestedCapsuleData = { ...nestedCapsule._doc };
+      if (parentCapsule && new Date(parentCapsule.UnlockDate) < currentDate) {
+        nestedCapsuleData.Status = 'Open';
+      }
+      
+      nestedCapsulesByParent[parentId].push(nestedCapsuleData);
+    });
+
     // Get likes count for each capsule
     const likesAggregation = await Like.aggregate([
       { $match: { TimeCapsuleID: { $in: capsuleIds } } },
@@ -299,7 +322,7 @@ export const getPublicCapsules = async (req, res) => {
       userLikesMap[like.TimeCapsuleID.toString()] = true;
     });
 
-    // Update capsule status and add interaction data
+    // Update capsule status and add interaction data with nested capsules
     const updatedCapsules = publicCapsules.map(capsule => {
       const capsuleData = { ...capsule._doc };
       if (new Date(capsule.UnlockDate) < currentDate) {
@@ -313,7 +336,7 @@ export const getPublicCapsules = async (req, res) => {
         CreatedBy: capsule.UserID, // full user info
         CreatorProfile: profileMap[capsule.UserID._id.toString()] || null, // profile info
         IsShared: false,
-        NestedCapsules: [], // public capsules won't have nested ones
+        NestedCapsules: nestedCapsulesByParent[capsuleId] || [], // Add nested capsules
         LikesCount: likesCountMap[capsuleId] || 0,
         CommentsCount: commentsCountMap[capsuleId] || 0,
         IsLikedByUser: userLikesMap[capsuleId] || false
@@ -332,3 +355,94 @@ export const getPublicCapsules = async (req, res) => {
     });
   }
 };
+
+// export const getPublicCapsules = async (req, res) => {
+//   try {
+//     const currentDate = new Date();
+//     const userId = req.userId; // From auth middleware
+
+//     // Find all capsules with CapsuleType = "Public"
+//     const publicCapsules = await TimeCapsule.find({ CapsuleType: 'Public' })
+//       .populate({ path: 'UserID', model: 'User' });
+
+//     // Get all unique creator IDs
+//     const creatorIds = [...new Set(publicCapsules.map(capsule => capsule.UserID._id))];
+
+//     // Fetch profiles for all creators
+//     const creatorProfiles = await Profile.find({ userId: { $in: creatorIds } });
+
+//     // Get capsule IDs for likes and comments aggregation
+//     const capsuleIds = publicCapsules.map(capsule => capsule._id);
+
+//     // Get likes count for each capsule
+//     const likesAggregation = await Like.aggregate([
+//       { $match: { TimeCapsuleID: { $in: capsuleIds } } },
+//       { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
+//     ]);
+
+//     // Get comments count for each capsule
+//     const commentsAggregation = await Comment.aggregate([
+//       { $match: { TimeCapsuleID: { $in: capsuleIds } } },
+//       { $group: { _id: '$TimeCapsuleID', count: { $sum: 1 } } }
+//     ]);
+
+//     // Get user's likes for these capsules
+//     const userLikes = await Like.find({
+//       UserID: userId,
+//       TimeCapsuleID: { $in: capsuleIds }
+//     });
+
+//     // Create lookup maps
+//     const profileMap = {};
+//     creatorProfiles.forEach(profile => {
+//       profileMap[profile.userId.toString()] = profile;
+//     });
+
+//     const likesCountMap = {};
+//     likesAggregation.forEach(like => {
+//       likesCountMap[like._id.toString()] = like.count;
+//     });
+
+//     const commentsCountMap = {};
+//     commentsAggregation.forEach(comment => {
+//       commentsCountMap[comment._id.toString()] = comment.count;
+//     });
+
+//     const userLikesMap = {};
+//     userLikes.forEach(like => {
+//       userLikesMap[like.TimeCapsuleID.toString()] = true;
+//     });
+
+//     // Update capsule status and add interaction data
+//     const updatedCapsules = publicCapsules.map(capsule => {
+//       const capsuleData = { ...capsule._doc };
+//       if (new Date(capsule.UnlockDate) < currentDate) {
+//         capsuleData.Status = 'Open';
+//       }
+      
+//       const capsuleId = capsule._id.toString();
+      
+//       return {
+//         ...capsuleData,
+//         CreatedBy: capsule.UserID, // full user info
+//         CreatorProfile: profileMap[capsule.UserID._id.toString()] || null, // profile info
+//         IsShared: false,
+//         NestedCapsules: [], // public capsules won't have nested ones
+//         LikesCount: likesCountMap[capsuleId] || 0,
+//         CommentsCount: commentsCountMap[capsuleId] || 0,
+//         IsLikedByUser: userLikesMap[capsuleId] || false
+//       };
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       capsules: updatedCapsules,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: 'An error occurred while fetching public capsules',
+//       error: error.message,
+//     });
+//   }
+// };

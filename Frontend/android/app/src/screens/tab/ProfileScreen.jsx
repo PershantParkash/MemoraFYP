@@ -757,156 +757,192 @@ useEffect(() => {
 }, [activeTab]);
 
   const renderCapsuleItem = ({ item }) => {
-    const isOwnCapsule = true; 
+  const isOwnCapsule = true; 
 
-    return (
-      <View style={styles.capsuleContainer}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{item.Title}</Text>
-          <View style={styles.statusContainer}>
-            <FontAwesome
-              name={item.IsPublic ? "globe" : "user"}
-              size={18}
-              color={item.IsPublic ? THEME.primary : '#666'}
-              style={styles.publicIcon}
-            />
-            <FontAwesome
-              name={item.Status === 'Locked' ? 'lock' : 'unlock'}
-              size={20}
-              color={item.Status === 'Locked' ? THEME.error : THEME.success}
-            />
-          </View>
+  return (
+    <View style={styles.capsuleContainer}>
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>{item.Title}</Text>
+        <View style={styles.statusContainer}>
+          <FontAwesome
+            name={item.IsPublic ? "globe" : "user"}
+            size={18}
+            color={item.IsPublic ? THEME.primary : '#666'}
+            style={styles.publicIcon}
+          />
+          <FontAwesome
+            name={item.Status === 'Locked' ? 'lock' : 'unlock'}
+            size={20}
+            color={item.Status === 'Locked' ? THEME.error : THEME.success}
+          />
         </View>
-
-        {/* Own Capsule Indicator */}
-        <View style={styles.ownCapsuleContainer}>
-          <MaterialIcons name="star" size={16} color={THEME.warning} />
-          <Text style={styles.ownCapsuleText}>
-            {item.CapsuleType}
-          </Text>
-        </View>
-
-        {/* Emotional Connection Button */}
-        {item.Description && item.Description.trim() !== '' && (
-          <TouchableOpacity
-            style={[styles.emotionalConnectionButton, { backgroundColor: THEME.primary }]}
-            onPress={() => handleEmotionalConnectionPress(item)}
-          >
-            <MaterialIcons name="chat" size={16} color="white" />
-            <Text style={styles.emotionalConnectionText}>💬 Emotional Message</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Creation Date */}
-        <View style={styles.dateContainer}>
-          <MaterialIcons name="schedule" size={16} color="#666" />
-          <Text style={styles.dateText}>
-            Created: {moment(item.CreatedAt).format('MMM DD, YYYY')}
-          </Text>
-        </View>
-
-        {/* Recipient Information */}
-        {item.RecipientName && (
-          <View style={styles.dateContainer}>
-            <MaterialIcons name="person" size={16} color="#666" />
-            <Text style={styles.dateText}>
-              Recipient: {item.RecipientName}
-            </Text>
-          </View>
-        )}
-
-        {/* Media Type Indicator */}
-        {item.Media && (
-          <View style={styles.mediaTypeContainer}>
-            <MaterialIcons
-              name={
-                getMediaType(item.Media) === 'image'
-                  ? 'photo'
-                  : getMediaType(item.Media) === 'video'
-                  ? 'videocam'
-                  : getMediaType(item.Media) === 'audio'
-                  ? 'audiotrack'
-                  : 'insert-drive-file'
-              }
-              size={16}
-              color="#666"
-            />
-            <Text style={styles.mediaTypeText}>
-              {getMediaType(item.Media).charAt(0).toUpperCase() + 
-               getMediaType(item.Media).slice(1)} File
-            </Text>
-          </View>
-        )}
-
-        {/* Likes and Comments Section */}
-        <View style={styles.interactionSection}>
-          <View style={styles.interactionStats}>
-            <View style={styles.statItem}>
-              <FontAwesome name="heart" size={16} color={THEME.like} />
-              <Text style={styles.statText}>{item.LikesCount || 0} likes</Text>
-            </View>
-            <View style={styles.statItem}>
-              <MaterialIcons name="comment" size={16} color={THEME.comment} />
-              <Text style={styles.statText}>{item.CommentsCount || 0} comments</Text>
-            </View>
-          </View>
-
-          <View style={styles.interactionButtons}>
-            <TouchableOpacity
-              style={[
-                styles.interactionButton,
-                item.IsLikedByUser && styles.likedButton
-              ]}
-              onPress={() => toggleLike(item._id)}
-              disabled={loadingLikeProfile[`profile_${item._id}`]}
-            >
-              {loadingLikeProfile[`profile_${item._id}`] ? (
-                <ActivityIndicator size="small" color={THEME.like} />
-              ) : (
-                <FontAwesome 
-                  name={item.IsLikedByUser ? "heart" : "heart-o"} 
-                  size={18} 
-                  color={item.IsLikedByUser ? THEME.like : "#666"} 
-                />
-              )}
-              <Text style={[
-                styles.interactionButtonText,
-                item.IsLikedByUser && styles.likedButtonText
-              ]}>
-                {item.IsLikedByUser ? 'Liked' : 'Like'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.interactionButton}
-              onPress={() => openCommentsModal(item)}
-            >
-              <MaterialIcons name="comment" size={18} color="#666" />
-              <Text style={styles.interactionButtonText}>Comment</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Action Button */}
-        {item.Status === 'Open' ? (
-          <TouchableOpacity
-            style={[styles.viewButton, { backgroundColor: THEME.primary }]}
-            onPress={() => setSelectedMedia(item.Media)}
-          >
-            <MaterialIcons name="visibility" size={20} color="white" />
-            <Text style={styles.buttonText}>View Capsule Media</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={[styles.lockedButton, { backgroundColor: THEME.error }]}>
-            <MaterialIcons name="lock" size={20} color="white" />
-            <Text style={styles.buttonText}>
-              Unlocks: {moment(item.UnlockDate).format('MMM DD, YYYY')}
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
-    );
-  };
+
+      {/* Own Capsule Indicator */}
+      <View style={styles.ownCapsuleContainer}>
+        <MaterialIcons name="star" size={16} color={THEME.warning} />
+        <Text style={styles.ownCapsuleText}>
+          {item.CapsuleType}
+        </Text>
+      </View>
+
+      {/* Emotional Connection Button */}
+      {item.Description && item.Description.trim() !== '' && (
+        <TouchableOpacity
+          style={[styles.emotionalConnectionButton, { backgroundColor: THEME.primary }]}
+          onPress={() => handleEmotionalConnectionPress(item)}
+        >
+          <MaterialIcons name="chat" size={16} color="white" />
+          <Text style={styles.emotionalConnectionText}>💬 Emotional Message</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Creation Date */}
+      <View style={styles.dateContainer}>
+        <MaterialIcons name="schedule" size={16} color="#666" />
+        <Text style={styles.dateText}>
+          Created: {moment(item.CreatedAt).format('MMM DD, YYYY')}
+        </Text>
+      </View>
+
+      {/* Recipient Information */}
+      {item.RecipientName && (
+        <View style={styles.dateContainer}>
+          <MaterialIcons name="person" size={16} color="#666" />
+          <Text style={styles.dateText}>
+            Recipient: {item.RecipientName}
+          </Text>
+        </View>
+      )}
+
+      {/* Media Type Indicator */}
+      {item.Media && (
+        <View style={styles.mediaTypeContainer}>
+          <MaterialIcons
+            name={
+              getMediaType(item.Media) === 'image'
+                ? 'photo'
+                : getMediaType(item.Media) === 'video'
+                ? 'videocam'
+                : getMediaType(item.Media) === 'audio'
+                ? 'audiotrack'
+                : 'insert-drive-file'
+            }
+            size={16}
+            color="#666"
+          />
+          <Text style={styles.mediaTypeText}>
+            {getMediaType(item.Media).charAt(0).toUpperCase() + 
+             getMediaType(item.Media).slice(1)} File
+          </Text>
+        </View>
+      )}
+
+      {/* ADD THIS NESTED CAPSULES SECTION */}
+      {item.NestedCapsules && item.NestedCapsules.length > 0 && (
+        <View style={styles.nestedCapsulesContainer}>
+          <Text style={styles.nestedCapsulesTitle}>Nested Capsules ({item.NestedCapsules.length})</Text>
+          {item.NestedCapsules.map((nestedCapsule, index) => (
+            <View key={nestedCapsule._id || index} style={styles.nestedCapsuleItem}>
+              <View style={styles.nestedCapsuleHeader}>
+                <Text style={styles.nestedCapsuleTitle}>{nestedCapsule.Title}</Text>
+                <FontAwesome
+                  name={nestedCapsule.Status === 'Locked' ? 'lock' : 'unlock'}
+                  size={16}
+                  color={nestedCapsule.Status === 'Locked' ? THEME.error : THEME.success}
+                />
+              </View>
+              {nestedCapsule.Description && (
+                <Text style={styles.nestedCapsuleDescription}>
+                  {nestedCapsule.Description}
+                </Text>
+              )}
+              {nestedCapsule.Status === 'Open' ? (
+                <TouchableOpacity
+                  style={[styles.nestedCapsuleButton, { backgroundColor: THEME.primary }]}
+                  onPress={() => setSelectedMedia(nestedCapsule.Media)}
+                >
+                  <Text style={styles.nestedCapsuleButtonText}>View Nested Capsule</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.nestedCapsuleLockedText}>
+                  Locked (unlocks with parent)
+                </Text>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Likes and Comments Section */}
+      <View style={styles.interactionSection}>
+        <View style={styles.interactionStats}>
+          <View style={styles.statItem}>
+            <FontAwesome name="heart" size={16} color={THEME.like} />
+            <Text style={styles.statText}>{item.LikesCount || 0} likes</Text>
+          </View>
+          <View style={styles.statItem}>
+            <MaterialIcons name="comment" size={16} color={THEME.comment} />
+            <Text style={styles.statText}>{item.CommentsCount || 0} comments</Text>
+          </View>
+        </View>
+
+        <View style={styles.interactionButtons}>
+          <TouchableOpacity
+            style={[
+              styles.interactionButton,
+              item.IsLikedByUser && styles.likedButton
+            ]}
+            onPress={() => toggleLike(item._id)}
+            disabled={loadingLikeProfile[`profile_${item._id}`]}
+          >
+            {loadingLikeProfile[`profile_${item._id}`] ? (
+              <ActivityIndicator size="small" color={THEME.like} />
+            ) : (
+              <FontAwesome 
+                name={item.IsLikedByUser ? "heart" : "heart-o"} 
+                size={18} 
+                color={item.IsLikedByUser ? THEME.like : "#666"} 
+              />
+            )}
+            <Text style={[
+              styles.interactionButtonText,
+              item.IsLikedByUser && styles.likedButtonText
+            ]}>
+              {item.IsLikedByUser ? 'Liked' : 'Like'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.interactionButton}
+            onPress={() => openCommentsModal(item)}
+          >
+            <MaterialIcons name="comment" size={18} color="#666" />
+            <Text style={styles.interactionButtonText}>Comment</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Action Button */}
+      {item.Status === 'Open' ? (
+        <TouchableOpacity
+          style={[styles.viewButton, { backgroundColor: THEME.primary }]}
+          onPress={() => setSelectedMedia(item.Media)}
+        >
+          <MaterialIcons name="visibility" size={20} color="white" />
+          <Text style={styles.buttonText}>View Capsule Media</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={[styles.lockedButton, { backgroundColor: THEME.error }]}>
+          <MaterialIcons name="lock" size={20} color="white" />
+          <Text style={styles.buttonText}>
+            Unlocks: {moment(item.UnlockDate).format('MMM DD, YYYY')}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
 
   const renderFriendItem = ({ item }) => (
     <View style={styles.friendItem}>
@@ -2101,6 +2137,58 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 4,
   },
+  nestedCapsulesContainer: {
+  marginTop: 15,
+  paddingHorizontal: 10,
+  paddingBottom: 10,
+},
+nestedCapsulesTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#555',
+  marginBottom: 10,
+},
+nestedCapsuleItem: {
+  backgroundColor: '#f8f9fa',
+  borderRadius: 8,
+  padding: 10,
+  marginBottom: 10,
+  borderWidth: 1,
+  borderColor: '#e0e0e0',
+  borderLeftWidth: 3,
+  borderLeftColor: THEME.primary,
+},
+nestedCapsuleHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 5,
+},
+nestedCapsuleTitle: {
+  fontSize: 14,
+  fontWeight: 'bold',
+  color: '#333',
+},
+nestedCapsuleDescription: {
+  fontSize: 12,
+  color: '#666',
+  marginBottom: 10,
+},
+nestedCapsuleLockedText: {
+  fontSize: 12,
+  color: '#999',
+  textAlign: 'right',
+},
+nestedCapsuleButton: {
+  paddingVertical: 8,
+  borderRadius: 5,
+  alignItems: 'center',
+},
+nestedCapsuleButtonText: {
+  color: '#fff',
+  fontSize: 12,
+  fontWeight: 'bold',
+},
 });
 
 export default ProfileScreen;

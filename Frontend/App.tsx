@@ -23,7 +23,6 @@ import HomeCapsule from './android/app/src/screens/HomeCapsule'
 import ChangePasswordScreen  from './android/app/src/screens/ChangePasswordScreen'
 import TermsOfServiceScreen from './android/app/src/screens/TermsOfServiceScreen'
 import HelpScreen from './android/app/src/screens/HelpScreen'
-import FeedbackScreen from  './android/app/src/screens/FeedbackScreen'
 import AboutMemoraScreen from './android/app/src/screens/AboutMemoraScreen'
 
 
@@ -88,7 +87,6 @@ const AppContent = () => {
         <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
         <Stack.Screen name="TermsOfServiceScreen" component={TermsOfServiceScreen} />
         <Stack.Screen name="HelpScreen" component={HelpScreen} />
-           <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />
             <Stack.Screen name="AboutMemoraScreen" component={AboutMemoraScreen} />
       </Stack.Navigator>
     </NavigationContainer>
