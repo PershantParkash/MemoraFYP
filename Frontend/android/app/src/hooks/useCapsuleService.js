@@ -53,6 +53,7 @@ const useCapsuleService = () => {
   const handleCreateCapsule = async (capsuleInfoOrFormData) => {
     try {
       setLoading(true);
+      Toast.hide();
       const token = await AsyncStorage.getItem('authToken');
 
       if (!token) {

@@ -1,3 +1,4 @@
+// Update your App.js to force Toast re-render
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -8,7 +9,7 @@ import { NavigationProvider } from './android/app/src/context/NavigationContext'
 import useAuthService from './android/app/src/hooks/useAuthService';
 import Toast from 'react-native-toast-message';
 
-// Import your screens manually
+// Your imports...
 import Index from './android/app/src/screens/Index';  
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Registration from './android/app/src/screens/RegistrationStep1'
@@ -32,6 +33,7 @@ const Stack = createNativeStackNavigator();
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [toastKey, setToastKey] = useState(0); // Force re-render key
   const { checkSessionStatus } = useAuthService();
 
   useEffect(() => {
@@ -40,11 +42,15 @@ const AppContent = () => {
         const sessionStatus = await checkSessionStatus();
         
         if (sessionStatus.sessionExpired) {
-          Toast.show({
-            type: 'info',
-            text1: 'Session Expired',
-            text2: 'Your session has expired. Please login again.',
-          });
+          // Force toast refresh
+          setToastKey(prev => prev + 1);
+          setTimeout(() => {
+            Toast.show({
+              type: 'info',
+              text1: 'Session Expired',
+              text2: 'Your session has expired. Please login again.',
+            });
+          }, 100);
         }
         
         setIsLoggedIn(sessionStatus.isLoggedIn);
@@ -89,17 +95,13 @@ const AppContent = () => {
         <Stack.Screen name="AboutMemoraScreen" component={AboutMemoraScreen} />
       </Stack.Navigator>
       
-      {/* Toast moved inside NavigationContainer with enhanced configuration */}
+      {/* Toast with key to force re-render */}
       <Toast 
+        key={toastKey}
         position="top"
         topOffset={60}
         visibilityTime={4000}
         autoHide={true}
-        swipeable={true}
-        // style={{
-        //   zIndex: 999999,
-        //   elevation: 999999,
-        // }}
       />
     </NavigationContainer>
   );
