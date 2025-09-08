@@ -11,6 +11,7 @@ const MyProvider = ({ children }) => {
     unlockDate: "",
     capsuleType: "",
     fileUri: "",
+    location: "",
   });
   const [token, setToken] = useState("");
   const [userDetails, setUserDetails] = useState({

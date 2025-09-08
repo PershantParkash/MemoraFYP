@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -7,11 +8,11 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Alert, // ✅ Added missing import
 } from 'react-native';
 import { RadioButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
-// import { useCreateCapsule } from '../hooks/useCapsuleService';
 import useCapsuleService from '../hooks/useCapsuleService';
 import { MyContext } from '../context/MyContext';
 import axiosInstance from '../api/axiosInstance';
@@ -28,6 +29,7 @@ const SendCapsulePage = () => {
   const [capsuleType, setCapsuleType] = useState(capsuleInfo.capsuleType);
   const [unlockDate, setUnlockDate] = useState(capsuleInfo.unlockDate);
   const [fileUri, setFileUri] = useState(capsuleInfo.fileUri);
+  const [location, setLocation] = useState(capsuleInfo.location); // ✅ Fixed typo
 
   const navigation = useNavigation();
   const [friends, setFriends] = useState([]);
@@ -68,8 +70,6 @@ const SendCapsulePage = () => {
           })
         );
         setFriends(friendsData);
-        
-       
       }
     } catch (error) {
       console.error('Error fetching friends:', error);
@@ -103,10 +103,6 @@ const SendCapsulePage = () => {
       setSelectedFriends(selectedFriends.filter((id) => id !== friendId));
     } else {
       setSelectedFriends([...selectedFriends, friendId]);
-      
-      // Show a subtle feedback when friend is selected
-      const selectedFriend = friends.find(friend => friend._id === friendId);
-     
     }
   };
 
@@ -129,41 +125,38 @@ const SendCapsulePage = () => {
       formData.append('title', title);
       formData.append('description', description || '');
       formData.append('unlockDate', unlockDate.toISOString());
-      formData.append('capsuleType', 'Shared');
+      formData.append('capsuleType', capsuleType || 'Shared'); // ✅ Use state value with fallback
       
-      // // Add image file
-      // if (fileUri) {
-      //   formData.append('files', {
-      //     uri: fileUri,
-      //     type: 'image/jpeg',
-      //     name: 'capsule_image.jpg'
-      //   });
-      // }
+      // ✅ Add location data if available
+      if (location?.lat && location?.lng) {
+        formData.append('lat', location.lat.toString());
+        formData.append('lng', location.lng.toString());
+      } 
+
+      // ✅ Add file with proper validation
       if (capsuleInfo.fileUri) {
-  const fileName = capsuleInfo.fileUri.split('/').pop();
-  const fileType = getFileType(
-    capsuleInfo.fileUri,
-    capsuleInfo.mediaType || 'photo' // fallback to photo if not provided
-  );
+        const fileName = capsuleInfo.fileUri.split('/').pop();
+        const fileType = getFileType(
+          capsuleInfo.fileUri,
+          capsuleInfo.mediaType || 'photo'
+        );
 
-  formData.append('files', {
-    uri: capsuleInfo.fileUri,
-    name: fileName || 'uploaded_file',
-    type: fileType,
-  });
+        formData.append('files', {
+          uri: capsuleInfo.fileUri,
+          name: fileName || 'uploaded_file',
+          type: fileType,
+        });
+      } else {
+        console.error('No file provided');
+        Alert.alert('Error', 'Please select a file for the capsule.');
+        setIsSendingCapsule(false);
+        return;
+      }
 
- 
-} else {
-  console.error('No file provided');
-  Alert.alert('Error', 'Please select a file for the capsule.');
-  return;
-}
-
+      // ✅ FIXED: Send friends as JSON string (matches backend expectation)
+      formData.append('friends', JSON.stringify(selectedFriends));
       
-      // Add selected friends
-      selectedFriends.forEach(friendId => {
-        formData.append('friends[]', friendId);
-      });
+      console.log('Sending capsule with friends:', selectedFriends);
       
       const response = await axiosInstance.post('/api/timecapsules/create', formData, {
         headers: {
@@ -184,12 +177,16 @@ const SendCapsulePage = () => {
       setTimeout(() => {
         navigation.navigate('Tab');
       }, 500);
+      
     } catch (error) {
       console.error('Error sharing capsule:', error);
+      console.error('Error details:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.message || 'Failed to share capsule. Please try again.';
       Toast.show({
         type: 'error',
         text1: 'Share Failed',
-        text2: 'Failed to share capsule. Please try again.',
+        text2: errorMessage,
       });
     } finally {
       setIsSendingCapsule(false);
@@ -208,6 +205,19 @@ const SendCapsulePage = () => {
     fetchFriends();
   }, []);
 
+  // ✅ Debug log to see what data we have
+  useEffect(() => {
+    console.log('SendCapsulePage - capsuleInfo:', {
+      title,
+      description,
+      capsuleType,
+      unlockDate,
+      fileUri,
+      location,
+      selectedFriends: selectedFriends.length
+    });
+  }, [title, description, capsuleType, unlockDate, fileUri, location, selectedFriends]);
+
   if (isLoadingFriends) {
     return (
       <View style={styles.loadingContainer}>
@@ -220,6 +230,20 @@ const SendCapsulePage = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Select Friends to Share With</Text>
+
+      {/* ✅ Debug info for development */}
+      {__DEV__ && (
+        <View style={styles.debugInfo}>
+          <Text style={styles.debugText}>
+            Debug: {selectedFriends.length} friends selected
+          </Text>
+          {location && (
+            <Text style={styles.debugText}>
+              Location: {location.lat?.toFixed(4)}, {location.lng?.toFixed(4)}
+            </Text>
+          )}
+        </View>
+      )}
 
       {friends.length === 0 ? (
         <View style={styles.noFriendsContainer}>
@@ -278,7 +302,6 @@ const SendCapsulePage = () => {
         )}
       </TouchableOpacity>
 
-       
       <Toast />
     </View>
   );
@@ -303,6 +326,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
+  },
+  debugInfo: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 5,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
   },
   friendContainer: {
     flexDirection: 'row',

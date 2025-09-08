@@ -25,7 +25,6 @@ import TermsOfServiceScreen from './android/app/src/screens/TermsOfServiceScreen
 import HelpScreen from './android/app/src/screens/HelpScreen'
 import AboutMemoraScreen from './android/app/src/screens/AboutMemoraScreen'
 
-
 LogBox.ignoreAllLogs(true);
 
 const Stack = createNativeStackNavigator();
@@ -87,8 +86,21 @@ const AppContent = () => {
         <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
         <Stack.Screen name="TermsOfServiceScreen" component={TermsOfServiceScreen} />
         <Stack.Screen name="HelpScreen" component={HelpScreen} />
-            <Stack.Screen name="AboutMemoraScreen" component={AboutMemoraScreen} />
+        <Stack.Screen name="AboutMemoraScreen" component={AboutMemoraScreen} />
       </Stack.Navigator>
+      
+      {/* Toast moved inside NavigationContainer with enhanced configuration */}
+      <Toast 
+        position="top"
+        topOffset={60}
+        visibilityTime={4000}
+        autoHide={true}
+        swipeable={true}
+        // style={{
+        //   zIndex: 999999,
+        //   elevation: 999999,
+        // }}
+      />
     </NavigationContainer>
   );
 };
@@ -99,7 +111,6 @@ export default function App() {
       <MyProvider>
         <NavigationProvider>
           <AppContent />
-          <Toast />
         </NavigationProvider>
       </MyProvider>
     </GestureHandlerRootView>
